@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="windows-1252">
+<meta http-equiv="X-UA-Compatible" content="IE=5">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Y2KMYSITE.COM &mdash; Make Any Web-Site Like It's 1999!!!</title>
+<meta name="description" content="Y2KMYSITE.COM turns any modern web-site into its glorious year-2000 self. A web-experience brought to you by Ramp.com.">
+<meta property="og:title" content="Y2KMYSITE.COM &mdash; THE INTERNET IS DOWN!!! 12/31/99">
+<meta property="og:description" content="Type in any URL and we'll reskin it like it's 1999. Brought to you by Ramp.com.">
+<meta property="og:image" content="https://kendallhtucker.github.io/y2kmysite/img/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<style>
+  /* ============ GLOBAL Y2K ============ */
+  html, body { margin: 0; padding: 0; background: #008080; font-family: "MS Sans Serif", "Tahoma", sans-serif; color: #000; overflow-x: hidden; }
+  body { min-height: 100vh; cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'><polygon points='2,2 2,18 7,14 11,22 14,21 10,13 17,13' fill='white' stroke='black' stroke-width='1.5' stroke-linejoin='round'/></svg>") 2 2, auto; }
+
+  .desktop { position: relative; min-height: 100vh; background:
+    radial-gradient(circle at 20% 30%, #00b3b3 0%, transparent 40%),
+    radial-gradient(circle at 80% 70%, #ff00ff20 0%, transparent 40%),
+    #008080;
+    overflow: hidden;
+  }
+
+  /* taskbar */
+  .taskbar {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 9999;
+    height: 30px; background: #c0c0c0;
+    border-top: 2px solid #fff;
+    box-shadow: inset 0 1px 0 #fff;
+    display: flex; align-items: center; padding: 0 4px;
+    font-family: "Tahoma", sans-serif; font-size: 12px;
+  }
+  .start-btn {
+    background: #c0c0c0;
+    border: 2px outset #c0c0c0;
+    padding: 2px 8px 2px 4px;
+    font-weight: bold; font-size: 12px;
+    display: flex; align-items: center; gap: 4px;
+    cursor: pointer;
+  }
+  .start-flag {
+    display: inline-block; width: 18px; height: 14px;
+    background: linear-gradient(135deg, #ff0000 25%, #00ff00 25% 50%, #0000ff 50% 75%, #ffff00 75%);
+  }
+  .tasks { flex: 1; display: flex; gap: 2px; padding: 0 6px; overflow: hidden; }
+  .task-item {
+    background: #c0c0c0; border: 2px inset #c0c0c0;
+    padding: 2px 8px; font-size: 11px;
+    max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .task-item.active { background: #909090; }
+  .tray { display: flex; align-items: center; gap: 6px; padding: 0 8px; border: 2px inset #c0c0c0; height: 22px; }
+  .tray-icon { width: 14px; height: 14px; }
+  .tray-clock { font-family: "Tahoma"; font-size: 11px; }
+
+  /* generic Windows 9x window */
+  .win98 {
+    position: absolute;
+    background: #c0c0c0;
+    border: 2px solid #000;
+    border-top-color: #fff; border-left-color: #fff;
+    border-right-color: #404040; border-bottom-color: #404040;
+    box-shadow: inset 1px 1px 0 #dfdfdf, 2px 2px 0 #00000060;
+    min-width: 240px; max-width: 92vw;
+    user-select: none;
+    font-family: "MS Sans Serif", "Tahoma", sans-serif;
+  }
+  .win98 .titlebar {
+    background: linear-gradient(90deg, #000080 0%, #1084d0 100%);
+    color: #fff; font-weight: bold; font-size: 13px;
+    padding: 3px 4px; display: flex; align-items: center; justify-content: space-between;
+    cursor: move;
+  }
+  .win98 .titlebar.pink { background: linear-gradient(90deg, #ff0080 0%, #ff80c0 100%); }
+  .win98 .titlebar.red  { background: linear-gradient(90deg, #c00 0%, #f00 100%); }
+  .win98 .titlebar.gold { background: linear-gradient(90deg, #b87333 0%, #ffd700 100%); color: #000; }
+  .win98 .ttext { display: flex; align-items: center; gap: 4px; }
+  .win98 .ticon { width: 14px; height: 14px; display: inline-block; }
+  .win98 .controls { display: flex; gap: 2px; }
+  .win98 .ctl-btn {
+    width: 18px; height: 16px;
+    background: #c0c0c0;
+    border: 2px outset #c0c0c0;
+    text-align: center; line-height: 12px; font-size: 11px; cursor: pointer;
+    color: #000; font-family: "Marlett", "Tahoma", sans-serif; font-weight: bold;
+  }
+  .win98 .body { padding: 12px; font-size: 12px; color: #000; }
+  .win98 .body p { margin: 0 0 10px; line-height: 1.4; }
+  .win98 .btnrow { text-align: center; margin-top: 12px; }
+  .win98 button.os {
+    background: #c0c0c0; border: 2px outset #c0c0c0;
+    padding: 3px 18px; font-size: 12px; font-family: inherit;
+    cursor: pointer; min-width: 70px;
+  }
+  .win98 button.os:active { border-style: inset; }
+
+  /* ============ STAGE 1 — POPUP HELL ============ */
+  .popup {
+    z-index: 100; animation: popIn 0.18s ease-out;
+  }
+  @keyframes popIn { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+  .popup .body img.silhouette {
+    width: 100%; max-width: 200px; display: block; margin: 0 auto 8px;
+    border: 2px solid #000;
+  }
+  .blink { animation: blink 1s steps(2) infinite; }
+  @keyframes blink { to { visibility: hidden; } }
+  .rainbow {
+    background: linear-gradient(90deg, #f00, #ff8c00, #ff0, #0f0, #0ff, #f0f, #f00);
+    background-size: 200% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: rainbow 3s linear infinite;
+  }
+  @keyframes rainbow { to { background-position: 200% 50%; } }
+
+  .punch-monkey { width: 80px; height: 80px; display: block; margin: 4px auto 8px; image-rendering: pixelated; animation: monkeyBounce 0.4s ease-in-out infinite alternate; cursor: pointer; }
+  @keyframes monkeyBounce { from { transform: translateY(-6px) rotate(-8deg); } to { transform: translateY(6px) rotate(8deg); } }
+
+  .singles-pic {
+    width: 100%; height: 110px;
+    background:
+      radial-gradient(circle at 50% 35%, #ffb3c6 0 32px, transparent 33px),
+      linear-gradient(180deg, #ff80c0 0%, #800040 100%);
+    border: 2px inset #c0c0c0; margin-bottom: 8px;
+    position: relative;
+  }
+  .singles-pic::before {
+    content: ""; position: absolute; left: 50%; top: 62px; transform: translateX(-50%);
+    width: 80px; height: 50px;
+    background: radial-gradient(ellipse at center top, #ffb3c6 0 60%, transparent 61%);
+  }
+  .singles-pic::after {
+    content: "Wendy, 21"; position: absolute; bottom: 4px; right: 6px;
+    color: #fff; font-size: 10px; text-shadow: 1px 1px 0 #000;
+    font-family: "Comic Sans MS", cursive;
+  }
+
+  .you-won {
+    background: #ffff00; color: #ff0000; padding: 8px; text-align: center;
+    border: 3px ridge #ff0000; font-weight: bold; font-size: 18px;
+    text-shadow: 1px 1px 0 #fff; font-family: "Impact", sans-serif;
+    margin-bottom: 8px;
+  }
+
+  /* ============ STAGE 2 — CRASH ============ */
+  .bsod {
+    position: fixed; inset: 0; z-index: 10000;
+    background: #0000aa; color: #fff;
+    font-family: "Lucida Console", "Courier New", monospace;
+    padding: 60px 40px; font-size: 16px; line-height: 1.4;
+    display: none;
+  }
+  .bsod.show { display: block; }
+  .bsod .err-head {
+    background: #aaaaaa; color: #0000aa; padding: 0 8px; display: inline-block;
+    font-weight: bold; margin-bottom: 20px;
+  }
+  .bsod-cursor { display: inline-block; width: 8px; height: 16px; background: #fff; vertical-align: middle; animation: blink 1s steps(2) infinite; }
+
+  .black-screen {
+    position: fixed; inset: 0; z-index: 10001; background: #000;
+    display: none; opacity: 0; transition: opacity 0.4s ease;
+  }
+  .black-screen.show { display: block; opacity: 1; }
+
+  .y2k-warning {
+    position: fixed; inset: 0; z-index: 10002;
+    display: none; align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  .y2k-warning.show { display: flex; }
+  .y2k-sign {
+    background: #ffd700;
+    border: 12px solid #000;
+    padding: 30px 40px;
+    max-width: 720px; width: 100%;
+    text-align: center;
+    box-shadow: 0 0 60px #ffd70080, 12px 12px 0 #00000080;
+    font-family: "Impact", "Arial Black", sans-serif;
+    transform: rotate(-2deg);
+    animation: signSlide 0.6s ease-out;
+  }
+  @keyframes signSlide { from { transform: rotate(-2deg) translateY(-100vh) scale(0.5); } to { transform: rotate(-2deg) translateY(0) scale(1); } }
+  .y2k-sign .warn-icon { font-size: 64px; line-height: 1; }
+  .y2k-sign h1 {
+    margin: 8px 0; font-size: 54px; color: #000; letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .y2k-sign .sub { font-family: "Arial Black", sans-serif; font-size: 22px; color: #000; margin: 4px 0 12px; line-height: 1.2; }
+  .y2k-sign .date { background: #000; color: #ffd700; padding: 10px 20px; display: inline-block; font-size: 36px; letter-spacing: 4px; }
+  .y2k-sign .joke {
+    margin-top: 22px; font-family: "Comic Sans MS", cursive; font-size: 16px;
+    color: #000; text-transform: none; letter-spacing: 0; font-weight: normal;
+  }
+  .y2k-sign .joke b { background: #000; color: #ffd700; padding: 2px 6px; }
+  .y2k-continue {
+    margin-top: 20px;
+    background: #000; color: #ffd700;
+    border: 4px solid #000; padding: 12px 40px;
+    font-family: "Impact", sans-serif; font-size: 22px; letter-spacing: 3px;
+    cursor: pointer; transition: transform 0.1s;
+  }
+  .y2k-continue:hover { transform: scale(1.05); }
+
+  /* ============ STAGE 3 — IE5 ADDRESS BAR ============ */
+  .ie5-stage {
+    position: fixed; inset: 0; z-index: 10003; display: none;
+    background:
+      repeating-linear-gradient(0deg, #008080 0 2px, #007070 2px 4px),
+      #008080;
+    padding: 30px 20px;
+    overflow-y: auto;
+    align-items: flex-start; justify-content: center;
+  }
+  .ie5-stage.show { display: flex; }
+  .ie5-window {
+    width: 100%; max-width: 720px;
+    background: #c0c0c0;
+    border: 2px solid #000;
+    border-top-color: #fff; border-left-color: #fff;
+    border-right-color: #404040; border-bottom-color: #404040;
+    box-shadow: 6px 6px 0 #00000060;
+  }
+  .ie5-titlebar {
+    background: linear-gradient(90deg, #000080 0%, #1084d0 100%);
+    color: #fff; padding: 4px 6px;
+    font-family: "Tahoma"; font-weight: bold; font-size: 13px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .ie5-menubar {
+    background: #c0c0c0; padding: 3px 8px;
+    font-family: "Tahoma"; font-size: 11px;
+    border-bottom: 1px solid #808080;
+    display: flex; gap: 14px;
+  }
+  .ie5-menubar span { cursor: default; padding: 1px 2px; }
+  .ie5-menubar span u { text-decoration: underline; }
+  .ie5-toolbar {
+    background: #c0c0c0; padding: 6px;
+    display: flex; align-items: center; gap: 4px;
+    border-bottom: 1px solid #808080;
+    flex-wrap: wrap;
+  }
+  .ie5-tool {
+    background: #c0c0c0; border: 2px outset #c0c0c0;
+    padding: 3px 6px; font-size: 10px; font-family: "Tahoma"; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; min-width: 44px;
+  }
+  .ie5-tool .ico { font-size: 16px; line-height: 1; }
+  .ie5-tool .lbl { margin-top: 2px; }
+  .ie5-addrbar {
+    background: #c0c0c0; padding: 6px;
+    display: flex; align-items: center; gap: 4px;
+    border-bottom: 1px solid #808080;
+  }
+  .ie5-addrbar .lbl-addr { font-family: "Tahoma"; font-size: 11px; padding: 0 4px; }
+  .ie5-addr-input-wrap {
+    flex: 1; background: #fff;
+    border: 2px inset #c0c0c0;
+    display: flex; align-items: center;
+    padding: 0 4px;
+  }
+  .ie5-addr-input-wrap .proto { font-family: "Tahoma"; font-size: 12px; color: #000; padding: 4px 2px 4px 4px; }
+  .ie5-addr-input-wrap input {
+    flex: 1; border: 0; outline: 0;
+    padding: 4px; font-family: "Tahoma"; font-size: 13px;
+    background: transparent;
+  }
+  .ie5-go {
+    background: #c0c0c0; border: 2px outset #c0c0c0;
+    padding: 4px 14px; font-family: "Tahoma"; font-size: 11px;
+    cursor: pointer; font-weight: bold;
+    background: linear-gradient(180deg, #ffff00, #ff8800);
+    color: #000;
+  }
+  .ie5-go:active { border-style: inset; }
+  .ie5-content {
+    background: #fff;
+    min-height: 380px;
+    padding: 28px;
+    font-family: "Times New Roman", serif;
+    color: #000080;
+    position: relative;
+  }
+  .ie5-content h1 {
+    font-family: "Impact", "Arial Black", sans-serif;
+    font-size: 48px; margin: 0 0 10px;
+    color: #ff00ff; text-shadow: 3px 3px 0 #00ffff, 6px 6px 0 #000;
+    letter-spacing: 3px;
+  }
+  .ie5-content .tagline { font-family: "Comic Sans MS", cursive; color: #000080; font-size: 16px; margin-bottom: 14px; }
+  .ie5-content p { line-height: 1.5; font-size: 14px; margin: 8px 0; color: #000; }
+  .ie5-content .examples { margin: 18px 0; font-size: 13px; color: #000; }
+  .ie5-content .ex-btn {
+    background: linear-gradient(180deg, #00ffff, #0080ff);
+    border: 2px outset #00ffff;
+    padding: 3px 10px; margin: 2px;
+    font-family: "Tahoma"; font-size: 12px; font-weight: bold;
+    cursor: pointer; color: #000;
+    text-decoration: none; display: inline-block;
+  }
+  .ie5-content .ex-btn:hover { background: linear-gradient(180deg, #ff00ff, #ff80ff); }
+  .ie5-content .footer-note { font-size: 11px; color: #808080; margin-top: 22px; font-family: "Arial"; }
+  .ie5-content .footer-note a { color: #0000ee; }
+  .ie5-statusbar {
+    background: #c0c0c0; border-top: 1px solid #fff;
+    padding: 3px 8px; font-family: "Tahoma"; font-size: 11px;
+    display: flex; justify-content: space-between;
+  }
+
+  /* dialing overlay */
+  .dialing {
+    position: fixed; inset: 0; background: #000000d0; z-index: 10100;
+    display: none; align-items: center; justify-content: center;
+  }
+  .dialing.show { display: flex; }
+  .dialing .panel {
+    background: #c0c0c0;
+    border: 2px solid #000;
+    border-top-color: #fff; border-left-color: #fff;
+    border-right-color: #404040; border-bottom-color: #404040;
+    padding: 0; min-width: 320px;
+    box-shadow: 4px 4px 0 #00000060;
+  }
+  .dialing .panel .titlebar {
+    background: linear-gradient(90deg, #000080, #1084d0);
+    color: #fff; font-weight: bold; padding: 4px 6px; font-family: "Tahoma"; font-size: 13px;
+  }
+  .dialing .panel .body { padding: 16px; font-size: 12px; font-family: "Tahoma"; }
+  .dialing .progress {
+    background: #fff; border: 2px inset #c0c0c0; height: 18px; margin: 10px 0;
+    overflow: hidden;
+  }
+  .dialing .progress-bar {
+    height: 100%; background: linear-gradient(90deg, #000080, #0000ff);
+    width: 0%; transition: width 0.3s ease;
+    box-shadow: inset 1px 1px 0 #4040ff;
+  }
+
+  /* ============ STAGE 4 — THE Y2K SITE ============ */
+  .render-stage { display: none; }
+  .render-stage.show { display: block; }
+  .render-stage iframe.site-frame {
+    display: block; width: 100%; height: 100vh; border: 0; background: #fff;
+  }
+
+  /* Bottom bar persistent across all renderings */
+  .y2k-footbar {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 9000;
+    background: #000; color: #ffd700;
+    font-family: "Tahoma", sans-serif; font-size: 12px;
+    padding: 6px 10px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-top: 2px solid #ffd700;
+    gap: 10px;
+  }
+  .y2k-footbar a { color: #ff00ff; font-weight: bold; }
+  .y2k-footbar .marqcontainer { flex: 1; overflow: hidden; white-space: nowrap; }
+  .y2k-footbar .typeagain {
+    background: linear-gradient(180deg, #ffff00, #ff8800);
+    color: #000; border: 2px outset #ffff00;
+    padding: 3px 10px; font-weight: bold; font-family: "Tahoma";
+    font-size: 11px; cursor: pointer;
+  }
+
+  /* Helpers */
+  .hidden { display: none !important; }
+  .center-text { text-align: center; }
+
+  @media (max-width: 720px) {
+    .y2k-sign h1 { font-size: 32px; }
+    .y2k-sign .sub { font-size: 14px; }
+    .y2k-sign .date { font-size: 22px; padding: 6px 12px; }
+    .y2k-sign .warn-icon { font-size: 40px; }
+    .y2k-continue { font-size: 16px; padding: 8px 24px; }
+    .bsod { padding: 30px 20px; font-size: 13px; }
+    .ie5-content { padding: 16px; }
+    .ie5-content h1 { font-size: 30px; }
+    .ie5-toolbar { font-size: 9px; }
+    .ie5-tool { min-width: 36px; padding: 2px 4px; }
+    .ie5-tool .ico { font-size: 14px; }
+    .ie5-tool .lbl { font-size: 9px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- =================== STAGE 1: DESKTOP + POPUP HELL =================== -->
+<div class="desktop" id="desktop">
+
+  <!-- Static IE window in background looking innocent -->
+  <div class="win98" id="bg-ie" style="left:24px; top:24px; width: min(680px, 70vw);">
+    <div class="titlebar">
+      <div class="ttext"><span class="ticon" style="background:#fff url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22><circle cx=%228%22 cy=%228%22 r=%226%22 fill=%22%23e8d000%22/><path d=%22M2 8h12M8 2v12M3 4c4 2 6 2 10 0M3 12c4-2 6-2 10 0%22 stroke=%22%23000%22 fill=%22none%22/></svg>') center/contain no-repeat;"></span> Microsoft Internet Explorer</div>
+      <div class="controls"><div class="ctl-btn">_</div><div class="ctl-btn">&#9633;</div><div class="ctl-btn">&times;</div></div>
+    </div>
+    <div class="body" style="background:#fff; min-height: 240px; padding: 16px;">
+      <div style="font-family:'Times New Roman',serif; font-size:14px; color:#000;">
+        <h2 style="margin:0 0 8px; font-family:Impact,sans-serif; color:#000080;">Welcome to the WORLD WIDE WEB!!</h2>
+        <p>Please wait while your home-page loads...</p>
+        <p style="color:#808080;"><i>Status: <span class="blink">Connecting to www.geocities.com...</span></i></p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Taskbar -->
+<div class="taskbar">
+  <div class="start-btn"><span class="start-flag"></span> Start</div>
+  <div class="tasks" id="tasks"></div>
+  <div class="tray">
+    <span class="tray-icon" style="background:#c0c0c0; border:1px solid #404040; width:12px; height:12px; display:inline-block;"></span>
+    <span class="tray-icon" style="background:#ffff00; border:1px solid #000; width:12px; height:12px; display:inline-block;"></span>
+    <span class="tray-clock" id="clock">11:58 PM</span>
+  </div>
+</div>
+
+<!-- =================== STAGE 2: BSOD =================== -->
+<div class="bsod" id="bsod">
+  <div class="err-head">Windows</div>
+  <div>A fatal exception 0E has occurred at 0028:C0011E36 in VXD VMM(01) +<br>
+    00010E36. The current application will be terminated.<br><br>
+    * Press any key to terminate the current application.<br>
+    * Press CTRL+ALT+DEL again to restart your computer. You will lose any unsaved<br>
+    &nbsp; information in all applications.<br><br>
+    <span style="background:#aaa; color:#0000aa; padding:0 8px; font-weight:bold;">Press any key to continue</span> <span class="bsod-cursor"></span>
+  </div>
+</div>
+
+<div class="black-screen" id="black"></div>
+
+<!-- =================== STAGE 2b: Y2K WARNING SIGN =================== -->
+<div class="y2k-warning" id="y2k">
+  <div class="y2k-sign">
+    <div class="warn-icon">&#9888;</div>
+    <h1>REMEMBER</h1>
+    <div class="sub">TURN YOUR COMPUTER OFF<br>BEFORE MIDNIGHT ON</div>
+    <div class="date">12/31/99</div>
+    <div class="joke">
+      ...just kidding. it's actually <b>2026</b> and your web-site looks like it. <br>
+      let's <b>fix that</b>. <span style="font-style:italic;">&mdash; Ramp.com</span>
+    </div>
+    <br>
+    <button class="y2k-continue" onclick="showIE5()">&raquo; CONTINUE &laquo;</button>
+  </div>
+</div>
+
+<!-- =================== STAGE 3: IE5 ADDRESS BAR =================== -->
+<div class="ie5-stage" id="ie5">
+  <div class="ie5-window">
+    <div class="ie5-titlebar">
+      <div>Y2KMYSITE.COM &mdash; Microsoft Internet Explorer</div>
+      <div style="display:flex; gap:2px;">
+        <div class="ctl-btn" style="width:18px; height:16px; background:#c0c0c0; border:2px outset #c0c0c0; text-align:center; line-height:12px; font-size:11px;">_</div>
+        <div class="ctl-btn" style="width:18px; height:16px; background:#c0c0c0; border:2px outset #c0c0c0; text-align:center; line-height:12px; font-size:11px;">&#9633;</div>
+        <div class="ctl-btn" style="width:18px; height:16px; background:#c0c0c0; border:2px outset #c0c0c0; text-align:center; line-height:12px; font-size:11px;">&times;</div>
+      </div>
+    </div>
+    <div class="ie5-menubar">
+      <span><u>F</u>ile</span><span><u>E</u>dit</span><span><u>V</u>iew</span><span>F<u>a</u>vorites</span><span><u>T</u>ools</span><span><u>H</u>elp</span>
+    </div>
+    <div class="ie5-toolbar">
+      <div class="ie5-tool"><span class="ico">&#11013;</span><span class="lbl">Back</span></div>
+      <div class="ie5-tool"><span class="ico">&#10145;</span><span class="lbl">Forward</span></div>
+      <div class="ie5-tool"><span class="ico">&#10060;</span><span class="lbl">Stop</span></div>
+      <div class="ie5-tool"><span class="ico">&#128260;</span><span class="lbl">Refresh</span></div>
+      <div class="ie5-tool"><span class="ico">&#127968;</span><span class="lbl">Home</span></div>
+      <div class="ie5-tool"><span class="ico">&#128269;</span><span class="lbl">Search</span></div>
+      <div class="ie5-tool"><span class="ico">&#11088;</span><span class="lbl">Favorites</span></div>
+      <div class="ie5-tool"><span class="ico">&#128231;</span><span class="lbl">Mail</span></div>
+      <div class="ie5-tool"><span class="ico">&#128424;</span><span class="lbl">Print</span></div>
+    </div>
+    <div class="ie5-addrbar">
+      <span class="lbl-addr">Address</span>
+      <div class="ie5-addr-input-wrap">
+        <span class="proto">http://www.</span>
+        <input type="text" id="urlinput" placeholder="ramp.com" autocomplete="off" spellcheck="false">
+      </div>
+      <button class="ie5-go" onclick="goY2K()">&raquo; Y2K MY SITE!</button>
+    </div>
+    <div class="ie5-content">
+      <h1 class="rainbow">Y2KMYSITE.COM</h1>
+      <div class="tagline">&laquo; The world's #1 web-site for Y2K-ifying your modern web-site!! &raquo;</div>
+      <p>Greetings, web-surfer!! Did you know that the internet was <b>BEST</b> in 1999, before Y2K destroyed it?? <span class="blink">FACT</span>.</p>
+      <p>Simply type any modern web-address into the bar above and we will reskin it like it's the year 2000 again, when web-sites had <b>SOUL</b> and <b>ANIMATED GIFS</b> and <b>HIT COUNTERS</b>.</p>
+      <div class="examples">
+        <b>&#10024; TRY ONE OF THESE PRE-Y2K-IFIED CLASSICS: &#10024;</b><br><br>
+        <a class="ex-btn" onclick="quickGo('ramp.com')">ramp.com</a>
+        <a class="ex-btn" onclick="quickGo('google.com')">google.com</a>
+        <a class="ex-btn" onclick="quickGo('stripe.com')">stripe.com</a>
+        <a class="ex-btn" onclick="quickGo('openai.com')">openai.com</a>
+        <a class="ex-btn" onclick="quickGo('apple.com')">apple.com</a>
+        <a class="ex-btn" onclick="quickGo('linear.app')">linear.app</a>
+        <a class="ex-btn" onclick="quickGo('nytimes.com')">nytimes.com</a>
+      </div>
+      <p class="footer-note">
+        Brought to you by <a href="https://ramp.com/?rc=6S7S4B&amp;referral_location=referral_page&amp;utm_source=y2kmysite&amp;utm_medium=footer&amp;utm_campaign=stunt" target="_blank"><b>Ramp.com</b></a> &mdash; the corporate card for companies 26 years old and counting. Best viewed in Netscape&reg; Navigator 4 or Internet Explorer 5 at 800&times;600.
+      </p>
+    </div>
+    <div class="ie5-statusbar">
+      <span>Done</span>
+      <span style="color:#000080;">&#128274; Internet Zone</span>
+    </div>
+  </div>
+</div>
+
+<!-- =================== DIALING OVERLAY =================== -->
+<div class="dialing" id="dialing">
+  <div class="panel">
+    <div class="titlebar">Connecting to the Internet...</div>
+    <div class="body">
+      <p style="margin:0 0 6px;"><b id="dial-action">Dialing...</b> <span id="dial-target"></span></p>
+      <div class="progress"><div class="progress-bar" id="dial-bar"></div></div>
+      <p style="margin:0; font-size:11px; color:#808080;" id="dial-status">Negotiating handshake at 56,600 bps...</p>
+    </div>
+  </div>
+</div>
+
+<!-- =================== STAGE 4: RENDERED Y2K SITE =================== -->
+<div class="render-stage" id="render"></div>
+
+<!-- Persistent footer bar (only shown during render stage) -->
+<div class="y2k-footbar hidden" id="footbar">
+  <span style="font-family:Impact,sans-serif; color:#ff00ff;">&#127760; Y2KMYSITE.COM</span>
+  <div class="marqcontainer"><marquee scrollamount="5">&#10024; Now serving <span id="visit-count">472,981</span> Y2K-ified web-sites! &#10024; Brought to you by Ramp&trade; &mdash; the corporate card for companies 26 years old and counting! &#10024; <a href="https://ramp.com/?rc=6S7S4B&amp;referral_location=referral_page&amp;utm_source=y2kmysite&amp;utm_medium=footbar&amp;utm_campaign=stunt" target="_blank" style="color:#ffff00;">JOIN RAMP TODAY</a> &mdash; Y2K compliant since MMXIX! &#10024;</marquee></div>
+  <button class="typeagain" onclick="restartFlow()">&raquo; Y2K-IFY ANOTHER SITE</button>
+</div>
+
+<!-- =================== AUDIO =================== -->
+<audio id="ding" preload="auto" src="data:audio/wav;base64,UklGRkQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YSAAAAB/f3+AgIB/f4CAgH9/gICAf3+AgIB/f4CAgH9/gICAf38="></audio>
+
+<script src="script.js?v=1"></script>
+</body>
+</html>
