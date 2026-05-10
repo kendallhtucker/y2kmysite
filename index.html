@@ -393,69 +393,8 @@
 </head>
 <body>
 
-<!-- =================== STAGE 1: DESKTOP + POPUP HELL =================== -->
-<div class="desktop" id="desktop">
-
-  <!-- Static IE window in background looking innocent -->
-  <div class="win98" id="bg-ie" style="left:24px; top:24px; width: min(680px, 70vw);">
-    <div class="titlebar">
-      <div class="ttext"><span class="ticon" style="background:#fff url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22><circle cx=%228%22 cy=%228%22 r=%226%22 fill=%22%23e8d000%22/><path d=%22M2 8h12M8 2v12M3 4c4 2 6 2 10 0M3 12c4-2 6-2 10 0%22 stroke=%22%23000%22 fill=%22none%22/></svg>') center/contain no-repeat;"></span> Microsoft Internet Explorer</div>
-      <div class="controls"><div class="ctl-btn">_</div><div class="ctl-btn">&#9633;</div><div class="ctl-btn">&times;</div></div>
-    </div>
-    <div class="body" style="background:#fff; min-height: 240px; padding: 16px;">
-      <div style="font-family:'Times New Roman',serif; font-size:14px; color:#000;">
-        <h2 style="margin:0 0 8px; font-family:Impact,sans-serif; color:#000080;">Welcome to the WORLD WIDE WEB!!</h2>
-        <p>Please wait while your home-page loads...</p>
-        <p style="color:#808080;"><i>Status: <span class="blink">Connecting to www.geocities.com...</span></i></p>
-      </div>
-    </div>
-  </div>
-
-</div>
-
-<!-- Taskbar -->
-<div class="taskbar">
-  <div class="start-btn"><span class="start-flag"></span> Start</div>
-  <div class="tasks" id="tasks"></div>
-  <div class="tray">
-    <span class="tray-icon" style="background:#c0c0c0; border:1px solid #404040; width:12px; height:12px; display:inline-block;"></span>
-    <span class="tray-icon" style="background:#ffff00; border:1px solid #000; width:12px; height:12px; display:inline-block;"></span>
-    <span class="tray-clock" id="clock">11:58 PM</span>
-  </div>
-</div>
-
-<!-- =================== STAGE 2: BSOD =================== -->
-<div class="bsod" id="bsod">
-  <div class="err-head">Windows</div>
-  <div>A fatal exception 0E has occurred at 0028:C0011E36 in VXD VMM(01) +<br>
-    00010E36. The current application will be terminated.<br><br>
-    * Press any key to terminate the current application.<br>
-    * Press CTRL+ALT+DEL again to restart your computer. You will lose any unsaved<br>
-    &nbsp; information in all applications.<br><br>
-    <span style="background:#aaa; color:#0000aa; padding:0 8px; font-weight:bold;">Press any key to continue</span> <span class="bsod-cursor"></span>
-  </div>
-</div>
-
-<div class="black-screen" id="black"></div>
-
-<!-- =================== STAGE 2b: Y2K WARNING SIGN =================== -->
-<div class="y2k-warning" id="y2k">
-  <div class="y2k-sign">
-    <div class="warn-icon">&#9888;</div>
-    <h1>REMEMBER</h1>
-    <div class="sub">TURN YOUR COMPUTER OFF<br>BEFORE MIDNIGHT ON</div>
-    <div class="date">12/31/99</div>
-    <div class="joke">
-      ...just kidding. it's actually <b>2026</b> and your web-site looks like it. <br>
-      let's <b>fix that</b>. <span style="font-style:italic;">&mdash; Ramp.com</span>
-    </div>
-    <br>
-    <button class="y2k-continue" onclick="showIE5()">&raquo; CONTINUE &laquo;</button>
-  </div>
-</div>
-
-<!-- =================== STAGE 3: IE5 ADDRESS BAR =================== -->
-<div class="ie5-stage" id="ie5">
+<!-- =================== IE5 ADDRESS BAR (LANDING) =================== -->
+<div class="ie5-stage show" id="ie5">
   <div class="ie5-window">
     <div class="ie5-titlebar">
       <div>Y2KMYSITE.COM &mdash; Microsoft Internet Explorer</div>

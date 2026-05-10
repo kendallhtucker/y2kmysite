@@ -331,7 +331,6 @@ function maybeSkip(e) {
    ================================================================== */
 
 function showIE5() {
-  document.getElementById('y2k').classList.remove('show');
   document.getElementById('ie5').classList.add('show');
   document.getElementById('render').classList.remove('show');
   document.getElementById('render').innerHTML = '';
@@ -929,13 +928,11 @@ function rampPopupSideAd(medium) {
    ================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
-  // start clock at 11:58 PM and tick up; will hit 11:59 PM, then 12:00 AM right before BSOD
-  startClock();
-  // start popup hell
-  setTimeout(startPopupHell, 600);
-  // input enter handler
   const inp = document.getElementById('urlinput');
-  if (inp) inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') goY2K(); });
+  if (inp) {
+    inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') goY2K(); });
+    setTimeout(() => inp.focus(), 100);
+  }
 });
 
 function startClock() {
