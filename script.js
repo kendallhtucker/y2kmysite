@@ -422,6 +422,12 @@ function hashStr(s) {
 }
 
 function renderSite(domain) {
+  // Special case: ramp.com redirects to the real ramp2000 site
+  if (domain === 'ramp.com') {
+    window.location.href = 'https://kendallhtucker.github.io/ramp2000/';
+    return;
+  }
+
   document.getElementById('ie5').classList.remove('show');
   const render = document.getElementById('render');
   render.classList.add('show');
