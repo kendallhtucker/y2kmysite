@@ -454,11 +454,12 @@ function routeTo(domain, opts) {
   // Reflect the route in the URL bar unless we're already responding to a popstate.
   if (!opts.skipPush) pushDomainPath(domain);
 
-  // Kick off the Wayback lookup IN PARALLEL with the dial-up animation, so the
-  // result is (usually) cached by the time renderSite needs it. We don't await
-  // here; lookupWayback caches its own result.
-  if (!CURATED[domain] && window.lookupWayback) {
-    window.lookupWayback(domain).catch(() => {});
+  // Kick off Wayback + live-site lookups IN PARALLEL with the dial-up animation,
+  // so both are (usually) cached by the time renderSite needs them. Neither is
+  // awaited here, both functions cache their own result internally.
+  if (!CURATED[domain]) {
+    if (window.lookupWayback)  window.lookupWayback(domain).catch(() => {});
+    if (window.lookupLiveSite) window.lookupLiveSite(domain).catch(() => {});
   }
 
   // show dialing modal
@@ -570,9 +571,20 @@ async function renderSite(domain) {
     }
   }
 
-  // For unknown sites, attempt live-fetch enrichment.
-  if (!CURATED[domain]) {
-    enrichWithLiveFetch(domain, data);
+  // For unknown sites, await the live-site lookup (started in routeTo) and
+  // merge the real title / description / nav labels / product images into
+  // `data` BEFORE we render. This way templates can use real assets without
+  // any post-render markdown leakage.
+  if (!CURATED[domain] && template === 'variant' && window.lookupLiveSite) {
+    try {
+      const live = await window.lookupLiveSite(domain);
+      if (live && live.available) {
+        if (live.title)       data.tagline = escapeText(live.title);
+        if (live.description) data.welcome = escapeText(live.description);
+        if (live.navLabels && live.navLabels.length)       data.navLabels = live.navLabels.map(escapeText);
+        if (live.productImages && live.productImages.length) data.productImages = live.productImages;
+      }
+    } catch (e) { console.warn('live lookup failed', e); }
   }
 
   let html = '';
@@ -677,6 +689,20 @@ function bumpAndShowCounter(domain) {
     });
 }
 
+// Minimal HTML escape for text pulled off the live web. We never trust
+// remote content as HTML; it goes through this before reaching a template.
+function escapeText(s) {
+  if (s == null) return s;
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// Legacy stub kept so old call sites don't 500. The new pipeline writes
+// data BEFORE render, so there's no DOM patching to do here.
 function enrichWithLiveFetch(domain, data) {
   // Best-effort, CORS-friendly. We try a simple text excerpt from a public proxy; fail silently.
   const url = `https://r.jina.ai/https://${domain}`;
@@ -765,8 +791,8 @@ function genericSiteData(domain) {
   return {
     domain,
     sitename: name + '!',
-    tagline: '<span id="lf-title">~ * the official ' + domain + ' home-page * ~</span>',
-    welcome: '<span id="lf-blurb">Welcome to the home-page of ' + name + ' on the world wide web!! This site has been Y2K-ified by Y2KMYSITE.COM for ur viewing pleasure!!</span>',
+    tagline: '~ * the official ' + domain + ' home-page * ~',
+    welcome: 'Welcome to the home-page of ' + name + ' on the world wide web!! This site has been Y2K-ified by Y2KMYSITE.COM for ur viewing pleasure!!',
     bullets: [
       '&#9733; Home',
       '&#9733; About Us',
@@ -884,6 +910,11 @@ function footerTag() {
 /* ---------- TEMPLATE A: GEOCITIES / HOMER PAGE ---------- */
 function tplGeocities(d) {
   const isRamp = d.domain === 'ramp.com';
+  // Use real nav labels from the live site if we have at least 4; otherwise
+  // the classic Geocities personal-page nav.
+  const geoNav = (window.realNav)
+    ? window.realNav(d, ['HOME','ABOUT','GUESTBOOK','LINKS','WEBMASTER'], 5)
+    : ['HOME','ABOUT','GUESTBOOK','LINKS','WEBMASTER'];
   return `
   <div style="background:#ffffff url(&quot;data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'><rect width='40' height='40' fill='%23004080'/><circle cx='10' cy='10' r='3' fill='%23ffff00'/><circle cx='30' cy='25' r='2' fill='%23ff00ff'/><circle cx='20' cy='35' r='2.5' fill='%2300ffff'/><path d='M5 20 L8 17 L11 20 L8 23 Z' fill='%23ffff00'/></svg>&quot;); background-attachment: fixed; min-height: 100vh; padding-bottom: 90px; color:#000; font-family:'Times New Roman',serif;">
 
@@ -896,7 +927,7 @@ function tplGeocities(d) {
         <h1 style="font-family:Impact,'Arial Black',sans-serif; font-size:54px; margin:0; color:#ff0000; text-shadow:3px 3px 0 #ffff00, 6px 6px 0 #000080, 9px 9px 0 #000; letter-spacing:3px;" class="blink-slow">${d.sitename}</h1>
         <div style="font-family:'Comic Sans MS',cursive; color:#0000ee; font-size:16px; margin-top:8px;">${d.tagline}</div>
         <div style="margin-top:10px;">
-          ${'&#10024;'.repeat(3)} <a href="#" style="color:#ee0000; text-decoration:underline;">HOME</a> | <a href="#" style="color:#ee0000;">ABOUT</a> | <a href="#" style="color:#ee0000;">GUESTBOOK</a> | <a href="#" style="color:#ee0000;">LINKS</a> | <a href="#" style="color:#ee0000;">WEBMASTER</a> ${'&#10024;'.repeat(3)}
+          ${'&#10024;'.repeat(3)} ${geoNav.map(x => `<a href="#" style="color:#ee0000; text-decoration:underline;">${String(x).toUpperCase()}</a>`).join(' | ')} ${'&#10024;'.repeat(3)}
         </div>
       </div>
 

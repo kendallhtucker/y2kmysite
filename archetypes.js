@@ -20,58 +20,84 @@ const __waybackCache = {};
 //
 // Strategy: hit the CDX API (more reliable than the availability endpoint)
 // for any snapshots in [1999, 2001], then pick the one closest to mid-2000.
+// Pack a timestamp + original URL into our standard snapshot object.
+function __wbResult(ts, orig) {
+  const iframeUrl = `https://web.archive.org/web/${ts}if_/${orig}`;
+  const viewUrl   = `https://web.archive.org/web/${ts}/${orig}`;
+  const yyyy = ts.slice(0,4), mm = ts.slice(4,6), dd = ts.slice(6,8);
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const displayDate = `${months[Math.max(0,parseInt(mm,10)-1)]} ${parseInt(dd,10)}, ${yyyy}`;
+  return { available: true, iframeUrl, viewUrl, timestamp: ts, displayDate };
+}
+
+// fetch-with-timeout helper.
+async function __fetchWith(url, ms) {
+  const ctrl = new AbortController();
+  const tid = setTimeout(() => ctrl.abort(), ms);
+  try {
+    const res = await fetch(url, { signal: ctrl.signal });
+    clearTimeout(tid);
+    return res;
+  } catch (e) {
+    clearTimeout(tid);
+    throw e;
+  }
+}
+
 async function lookupWayback(domain) {
   const key = String(domain || '').toLowerCase();
   if (__waybackCache[key]) return __waybackCache[key];
 
-  // CDX returns rows: [urlkey, timestamp, original, mimetype, statuscode, digest, length].
-  // CDX doesn't set CORS headers, so we go through corsproxy.io (free, no key).
+  // Strategy A: CDX via corsproxy.io. Returns ALL year-2000 snapshots so we
+  // can pick the one closest to mid-2000.
+  // Strategy B: Wayback Availability API direct (CORS-friendly), asking for the
+  // closest snapshot to 20000615. Less precise but more reliable when proxies
+  // are slow or down.
+  // We race them: whichever responds first with a usable result wins.
   const cdxBare = `https://web.archive.org/cdx/search/cdx?url=${encodeURIComponent(key)}&from=19990101&to=20011231&filter=statuscode:200&limit=25&output=json`;
-  const cdx = `https://corsproxy.io/?${encodeURIComponent(cdxBare)}`;
+  const cdxProxied = `https://corsproxy.io/?${encodeURIComponent(cdxBare)}`;
+  const availBare = `https://archive.org/wayback/available?url=${encodeURIComponent(key)}&timestamp=20000615`;
 
-  try {
-    const ctrl = new AbortController();
-    const tid = setTimeout(() => ctrl.abort(), 6000);
-    const res = await fetch(cdx, { signal: ctrl.signal });
-    clearTimeout(tid);
+  async function tryCdx() {
+    const res = await __fetchWith(cdxProxied, 10000);
     if (!res.ok) throw new Error('cdx http ' + res.status);
     const rows = await res.json();
-    // First row is the header; skip it.
-    if (!Array.isArray(rows) || rows.length < 2) {
-      __waybackCache[key] = { available: false };
-      return __waybackCache[key];
-    }
-    const data = rows.slice(1);
-    // Pick the snapshot closest to 20000615 (mid-2000).
+    if (!Array.isArray(rows) || rows.length < 2) throw new Error('cdx empty');
     const target = 20000615000000;
     let best = null, bestDist = Infinity;
-    for (const r of data) {
-      const ts = r[1];
-      if (!ts || ts.length < 8) continue;
+    for (const r of rows.slice(1)) {
+      const ts = r[1]; if (!ts || ts.length < 8) continue;
       const tsNum = parseInt(ts.padEnd(14,'0'), 10);
       const d = Math.abs(tsNum - target);
       if (d < bestDist) { bestDist = d; best = r; }
     }
-    if (!best) {
-      __waybackCache[key] = { available: false };
-      return __waybackCache[key];
-    }
-    const ts = best[1];
-    const orig = best[2]; // e.g. http://www.petco.com:80/
-    const iframeUrl = `https://web.archive.org/web/${ts}if_/${orig}`;
-    const viewUrl   = `https://web.archive.org/web/${ts}/${orig}`;
-    const yyyy = ts.slice(0,4), mm = ts.slice(4,6), dd = ts.slice(6,8);
-    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    const displayDate = `${months[Math.max(0,parseInt(mm,10)-1)]} ${parseInt(dd,10)}, ${yyyy}`;
-    __waybackCache[key] = {
-      available: true,
-      iframeUrl,
-      viewUrl,
-      timestamp: ts,
-      displayDate,
-    };
-    return __waybackCache[key];
+    if (!best) throw new Error('cdx no 2000 row');
+    return __wbResult(best[1], best[2]);
+  }
+
+  async function tryAvailability() {
+    const res = await __fetchWith(availBare, 10000);
+    if (!res.ok) throw new Error('avail http ' + res.status);
+    const j = await res.json();
+    const c = j && j.archived_snapshots && j.archived_snapshots.closest;
+    if (!c || !c.available || !c.timestamp || !c.url) throw new Error('avail no snapshot');
+    const ts = c.timestamp;
+    // Only accept snapshots in [1999, 2001].
+    const yr = parseInt(ts.slice(0,4), 10);
+    if (yr < 1999 || yr > 2001) throw new Error('avail year ' + yr + ' out of range');
+    // c.url already looks like http://web.archive.org/web/<ts>/<orig>, extract orig.
+    const m = c.url.match(/\/web\/\d+\/(.+)$/);
+    const orig = m ? m[1] : `http://${key}/`;
+    return __wbResult(ts, orig);
+  }
+
+  // Race: first successful result wins. If both reject, we return unavailable.
+  try {
+    const winner = await Promise.any([tryCdx(), tryAvailability()]);
+    __waybackCache[key] = winner;
+    return winner;
   } catch (e) {
+    // AggregateError or anything else => no snapshot available.
     __waybackCache[key] = { available: false, error: String(e) };
     return __waybackCache[key];
   }
@@ -92,19 +118,6 @@ function renderWaybackSnapshot(domain, wb, profile) {
     <marquee scrollamount="6" style="background:${p.primary}; color:${p.accent}; font-family:'Courier New',monospace; padding:4px 0; font-size:13px; border-bottom:2px ridge ${p.secondary};">
       &#10024; GENUINE ${wb.displayDate.toUpperCase()} ARCHIVE OF ${displayName.toUpperCase()} &#10024; SERVED FRESH FROM THE WAYBACK MACHINE &#10024; Y2K COMPLIANT!! &#10024; OPTIMIZED FOR NETSCAPE 4 + IE5 &#10024;
     </marquee>
-
-    <!-- Snapshot ribbon -->
-    <div style="background:linear-gradient(180deg, ${p.primary}, ${p.secondary}); color:${p.accent}; padding:10px 14px; border-bottom:3px ridge ${p.accent}; font-family:Verdana,sans-serif;">
-      <table style="width:100%; max-width:1100px; margin:0 auto; border-collapse:collapse;"><tr>
-        <td style="font-size:13px; font-weight:bold; letter-spacing:1px;">
-          &#10024; GENUINE ${wb.displayDate.toUpperCase()} SNAPSHOT &#10024;
-        </td>
-        <td style="text-align:right; font-size:11px;">
-          archived ${wb.displayDate} &middot;
-          <a href="${wb.viewUrl}" target="_blank" style="color:${p.accent}; text-decoration:underline;">view on archive.org &rarr;</a>
-        </td>
-      </tr></table>
-    </div>
 
     <!-- The real snapshot, in an iframe. Loading splash sits behind the iframe
          so users see something while Wayback responds. -->
@@ -172,6 +185,120 @@ function wireWaybackFallback(root) {
 window.lookupWayback = lookupWayback;
 window.renderWaybackSnapshot = renderWaybackSnapshot;
 window.wireWaybackFallback = wireWaybackFallback;
+
+/* ============================================================
+   LIVE SITE LOOKUP
+   For domains with no Y2K snapshot, we pull real assets from
+   their CURRENT site, then style those into a Y2K render. So the
+   user still sees their actual nav links, copy, and product imagery,
+   just dressed up like it's 1999.
+
+   We use Jina Reader (https://r.jina.ai/) which returns either
+   markdown or raw HTML and supports CORS. Some sites (Petco, Chewy,
+   Amazon) block bots and return nothing; those domains almost always
+   have a Wayback snapshot anyway.
+   ============================================================ */
+
+const __liveCache = {};
+
+async function lookupLiveSite(domain) {
+  const key = String(domain || '').toLowerCase();
+  if (__liveCache[key]) return __liveCache[key];
+
+  const target = `https://${key}`;
+  const url = `https://r.jina.ai/${target}`;
+
+  try {
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), 7000);
+    const res = await fetch(url, { signal: ctrl.signal });
+    clearTimeout(tid);
+    if (!res.ok) throw new Error('jina http ' + res.status);
+    const text = await res.text();
+    if (text.includes('Target URL returned error') || text.includes('CAPTCHA')) {
+      __liveCache[key] = { available: false, blocked: true };
+      return __liveCache[key];
+    }
+
+    // ---- Parse the Jina Reader response ----
+    // Block 1: Title (single line)
+    const titleMatch = text.match(/^Title:\s*(.+?)$/m);
+    const title = titleMatch ? titleMatch[1].trim().slice(0, 120) : null;
+
+    // Block 2: Markdown body (after "Markdown Content:")
+    const bodyMatch = text.split(/Markdown Content:\s*/);
+    const body = bodyMatch.length > 1 ? bodyMatch.slice(1).join('Markdown Content:') : text;
+
+    // Description: first text paragraph that's not a link, image, or heading
+    let description = null;
+    const lines = body.split(/\n+/).map(l => l.trim()).filter(Boolean);
+    for (const line of lines) {
+      if (/^[#>!]/.test(line)) continue;
+      if (/^\[/.test(line) && /\]\(/.test(line)) continue; // pure link
+      if (/^!\[/.test(line)) continue; // image
+      const plain = line.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1').replace(/!\[[^\]]*\]\([^)]+\)/g, '').trim();
+      if (plain.length >= 40 && plain.length <= 320) {
+        description = plain;
+        break;
+      }
+    }
+
+    // Nav labels: pull link texts that look like nav items
+    // (short, plain words, not URLs or generic 'click here')
+    const navLabels = [];
+    const seenLabels = new Set();
+    const linkRe = /\[([^\]]+)\]\(([^)]+)\)/g;
+    let m;
+    while ((m = linkRe.exec(body)) !== null) {
+      let lbl = m[1].trim();
+      // strip leading product names like 'Notion Calendar' -> 'Calendar' is hard;
+      // just take labels short enough to be nav-y
+      if (!lbl || lbl.length > 28) continue;
+      // skip pure URLs, emoji-only, image alt-text
+      if (/^https?:/i.test(lbl)) continue;
+      if (/^image\s*\d*$/i.test(lbl)) continue;
+      if (/^\s*$/.test(lbl)) continue;
+      // collapse weird whitespace, strip markdown-y arrows
+      lbl = lbl.replace(/\s+/g, ' ').replace(/[→↓↑←»«]+$/g, '').trim();
+      if (lbl.length < 2) continue;
+      const k = lbl.toLowerCase();
+      if (seenLabels.has(k)) continue;
+      // reject obviously bad labels
+      if (/^(register today|click here|learn more|see what|read more|see all|show all)$/i.test(lbl)) continue;
+      seenLabels.add(k);
+      navLabels.push(lbl);
+      if (navLabels.length >= 12) break;
+    }
+
+    // Product images: extract markdown image URLs
+    const productImages = [];
+    const seenImg = new Set();
+    const imgRe = /!\[([^\]]*)\]\(([^)]+)\)/g;
+    while ((m = imgRe.exec(body)) !== null) {
+      const u = m[2].trim();
+      if (!/^https?:\/\//i.test(u)) continue;
+      if (/\.(svg)(\?|$)/i.test(u)) continue; // skip svgs which are often logos/icons
+      if (seenImg.has(u)) continue;
+      seenImg.add(u);
+      productImages.push({ url: u, alt: (m[1] || '').slice(0, 60) });
+      if (productImages.length >= 8) break;
+    }
+
+    __liveCache[key] = {
+      available: true,
+      title,
+      description,
+      navLabels,
+      productImages,
+    };
+    return __liveCache[key];
+  } catch (e) {
+    __liveCache[key] = { available: false, error: String(e) };
+    return __liveCache[key];
+  }
+}
+
+window.lookupLiveSite = lookupLiveSite;
 
 /* ---------- Keyword → category map ---------- */
 // Order matters: earlier matches win.
@@ -381,6 +508,37 @@ function pillBtn(text, href, p) {
   return `<a href="${href||'#'}" style="display:inline-block; padding:6px 14px; background:linear-gradient(180deg,${p.accent} 0%, ${p.primary} 100%); color:${p.secondary}; text-decoration:none; font-family:Verdana,Arial,sans-serif; font-size:12px; font-weight:bold; border:2px outset ${p.accent}; margin:2px;">${text}</a>`;
 }
 
+/* Utility: prefer real nav labels from the live site, otherwise use a template
+   default. We always pad to at least `min` items so layouts stay balanced. */
+function realNav(d, fallback, min) {
+  const out = (d && d.navLabels && d.navLabels.length) ? d.navLabels.slice(0, Math.max(fallback.length, min || 0)) : fallback;
+  if (min && out.length < min) {
+    let i = 0;
+    while (out.length < min) { out.push(fallback[i % fallback.length]); i++; }
+  }
+  return out;
+}
+
+/* Utility: if the live site exposed a usable image at this index, render it.
+   Otherwise fall back to the inline pixel-art icon. Images are framed with
+   the same panel chrome so they read as Y2K product tiles. */
+function realProductImg(d, idx, p, w, h) {
+  w = w || 100; h = h || 80;
+  const img = d && d.productImages && d.productImages[idx];
+  if (!img || !img.url) return productIcon(idx, p, w, h);
+  const sec  = p.secondary || '#eee';
+  const prim = p.primary || '#000';
+  // Use referrerpolicy=no-referrer so hotlink-protected CDNs (Cloudinary, scdn,
+  // etc.) still serve to us in the iframe-y context.
+  // On image error we just hide the <img>; the tinted panel underneath stays
+  // and reads as a Y2K "image broken" cell, which is actually period-correct.
+  return `<div style="width:100%; height:${h}px; background:${sec}; border:1px solid ${prim}55; display:flex; align-items:center; justify-content:center; overflow:hidden;">
+    <img src="${img.url}" alt="" referrerpolicy="no-referrer" loading="lazy"
+         onerror="this.style.display='none';"
+         style="max-width:100%; max-height:100%; object-fit:cover; display:block;">
+  </div>`;
+}
+
 /* Utility: inline-SVG product/content icons (pixel-art style, Y2K stock-clip-art vibe).
    Pool of ~12 motifs. Pick deterministically by index so each tile gets a different one.
    Tinted with the variant palette via currentColor + accent fills. */
@@ -428,6 +586,10 @@ function productIcon(idx, p, w, h) {
 function tplDarkGameShrine(d, p) {
   const news = (d.bullets || []).slice(0, 5);
   const news4 = news.length >= 4 ? news : ['NEW: Beta patch 1.04 released', 'TIPS &amp; TRICKS section updated', 'fan-art submissions OPEN', 'official forum: 12,047 users online'];
+  // Real top-row nav (5 items) + real sidebar nav (9 items), pulled from the
+  // live site when available, otherwise game-shrine defaults.
+  const topNav  = realNav(d, ['Enter','News','Downloads','Forum','Support'], 5);
+  const sideNav = realNav(d, ['News &amp; Updates','Walkthroughs','Cheats &amp; Codes','Screenshots','Patches','Mods','Forums (4,201)','Store','Webmaster'], 9);
   return `
   <div style="background:#000 url(&quot;data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'><rect width='200' height='200' fill='%23${p.secondary.replace('#','')}'/><path d='M0 100 L200 100 M100 0 L100 200' stroke='%23${p.primary.replace('#','')}' stroke-width='0.5' opacity='0.15'/></svg>&quot;); min-height:100vh; padding-bottom:90px; color:${p.accent}; font-family:'Georgia','Times New Roman',serif;">
 
@@ -440,11 +602,7 @@ function tplDarkGameShrine(d, p) {
         <h1 style="font-family:'Georgia',serif; font-size:64px; margin:0; color:${p.primary}; text-shadow: 0 0 12px ${p.primary}, 2px 2px 0 #000; letter-spacing:4px; font-weight:bold;">${d.sitename.toUpperCase()}</h1>
         <div style="font-family:'Courier New',monospace; color:${p.accent}; font-size:14px; margin-top:8px; letter-spacing:2px;">&laquo;&laquo; ${d.tagline} &raquo;&raquo;</div>
         <div style="margin-top:14px;">
-          <a href="#" style="color:${p.primary}; text-decoration:none; margin:0 8px; font-variant:small-caps; font-size:14px;">[ Enter ]</a>
-          <a href="#" style="color:${p.primary}; text-decoration:none; margin:0 8px; font-variant:small-caps; font-size:14px;">[ News ]</a>
-          <a href="#" style="color:${p.primary}; text-decoration:none; margin:0 8px; font-variant:small-caps; font-size:14px;">[ Downloads ]</a>
-          <a href="#" style="color:${p.primary}; text-decoration:none; margin:0 8px; font-variant:small-caps; font-size:14px;">[ Forum ]</a>
-          <a href="#" style="color:${p.primary}; text-decoration:none; margin:0 8px; font-variant:small-caps; font-size:14px;">[ Support ]</a>
+          ${topNav.map(x => `<a href="#" style="color:${p.primary}; text-decoration:none; margin:0 8px; font-variant:small-caps; font-size:14px;">[ ${x} ]</a>`).join('')}
         </div>
       </div>
 
@@ -455,15 +613,7 @@ function tplDarkGameShrine(d, p) {
         <td style="width:180px; vertical-align:top; padding:8px; background:#0a0a0a; border:2px ridge ${p.primary}80;">
           <div style="font-family:'Georgia',serif; color:${p.primary}; font-size:14px; font-variant:small-caps; border-bottom:1px solid ${p.primary}; padding-bottom:4px; margin-bottom:8px;">~ Navigation ~</div>
           <ul style="list-style:none; padding:0; margin:0; font-family:'Courier New',monospace; font-size:12px; line-height:1.9; color:${p.accent};">
-            <li>&raquo; <a href="#" style="color:${p.accent};">News &amp; Updates</a></li>
-            <li>&raquo; <a href="#" style="color:${p.accent};">Walkthroughs</a></li>
-            <li>&raquo; <a href="#" style="color:${p.accent};">Cheats &amp; Codes</a></li>
-            <li>&raquo; <a href="#" style="color:${p.accent};">Screenshots</a></li>
-            <li>&raquo; <a href="#" style="color:${p.accent};">Patches</a></li>
-            <li>&raquo; <a href="#" style="color:${p.accent};">Mods</a></li>
-            <li>&raquo; <a href="#" style="color:${p.accent};">Forums (4,201)</a></li>
-            <li>&raquo; <a href="#" style="color:${p.accent};">Store</a></li>
-            <li>&raquo; <a href="#" style="color:${p.accent};">Webmaster</a></li>
+            ${sideNav.map(x => `<li>&raquo; <a href="#" style="color:${p.accent};">${x}</a></li>`).join('')}
           </ul>
           <div style="margin-top:12px; padding:8px; border:1px ridge ${p.primary}; text-align:center;">
             <div style="color:${p.primary}; font-size:11px; font-variant:small-caps;">~ Server Status ~</div>
@@ -581,6 +731,10 @@ function tplFlashPromoCinematic(d, p) {
 function tplMaximalPortal(d, p) {
   const items = (d.bullets || []).slice(0,6);
   while (items.length < 6) items.push('&#9733; Forum post #' + (items.length+1));
+  // Top nav (9 slots) + left-rail categories (10 slots) come from the live
+  // site if available, otherwise we use Newgrounds-flavored defaults.
+  const topNav = realNav(d, ['Home','News','Submissions','Forums','Top 50','Shop','Audio Portal','BBS','User Login'], 9);
+  const cats   = realNav(d, ['Action','Adventure','Comedy','Drama','Experimental','Music','Spam','Stick','Story','Weird'], 10);
   return `
   <div style="background:${p.secondary}; min-height:100vh; padding-bottom:90px; color:${p.accent}; font-family:Tahoma,Verdana,sans-serif; font-size:11px;">
 
@@ -597,7 +751,7 @@ function tplMaximalPortal(d, p) {
 
     <!-- Top nav strip -->
     <div style="background:${p.primary}cc; border-bottom:2px solid ${p.accent}; padding:6px 14px; display:flex; gap:14px; flex-wrap:wrap; font-family:Tahoma,sans-serif;">
-      ${['Home','News','Submissions','Forums','Top 50','Shop','Audio Portal','BBS','User Login'].map(x =>
+      ${topNav.map(x =>
         `<a href="#" style="color:${p.accent}; text-decoration:none; font-weight:bold; font-size:11px;">${x}</a>`
       ).join('')}
     </div>
@@ -611,7 +765,7 @@ function tplMaximalPortal(d, p) {
           <div style="background:${p.primary}40; border:1px solid ${p.accent}; padding:6px;">
             <div style="background:${p.primary}; color:${p.accent}; padding:3px 6px; font-weight:bold;">~ CATEGORIES ~</div>
             <ul style="list-style:none; padding:6px 0; margin:0; line-height:1.7; color:${p.accent};">
-              ${['Action','Adventure','Comedy','Drama','Experimental','Music','Spam','Stick','Story','Weird'].map(x =>
+              ${cats.map(x =>
                 `<li>&raquo; <a href="#" style="color:${p.accent};">${x}</a> <span style="color:${p.accent}80;">(${Math.floor(Math.random()*4000+200)})</span></li>`
               ).join('')}
             </ul>
@@ -695,6 +849,11 @@ function tplMaximalPortal(d, p) {
 function tplCorpEcommercePortal(d, p) {
   const items = (d.bullets || []).slice(0,6);
   while (items.length < 6) items.push('Featured product');
+  // Real top-tab nav + real left-rail browse nav, when the live site gave us
+  // enough labels. The first tab is always "Welcome" so the homepage feels
+  // like an Amazon-style portal.
+  const tabs = ['Welcome'].concat(realNav(d, ['Books','Music','Video','Electronics','Toys','Home &amp; Garden','Apparel','Tools','Auctions','zShops'], 10));
+  const browse = realNav(d, ['Bestsellers','New Releases','Coming Soon','Editor&#39;s Picks','Used &amp; Refurb','International','Gift Center'], 7);
   // Generate fake product cards from the bullets
   return `
   <div style="background:#ffffff; min-height:100vh; padding-bottom:90px; color:#000; font-family:'Times New Roman',Times,serif; font-size:13px;">
@@ -731,7 +890,7 @@ function tplCorpEcommercePortal(d, p) {
     <!-- Tabs -->
     <div style="background:${p.secondary}; padding:0 12px; border-bottom:2px solid #000;">
       <div style="max-width:1000px; margin:0 auto; display:flex; gap:0; flex-wrap:wrap; font-family:Arial,sans-serif; font-size:12px;">
-        ${['Welcome','Books','Music','Video','Electronics','Toys','Home &amp; Garden','Apparel','Tools','Auctions','zShops'].map((t,i) =>
+        ${tabs.map((t,i) =>
           `<a href="#" style="display:block; padding:6px 14px; background:${i===0?p.accent:p.primary}; color:${i===0?'#000':p.accent}; text-decoration:none; border-right:1px solid ${p.secondary}; font-weight:${i===0?'bold':'normal'};">${t}</a>`
         ).join('')}
       </div>
@@ -751,13 +910,7 @@ function tplCorpEcommercePortal(d, p) {
           <div style="border:1px solid #999; background:#f5f5f5;">
             <div style="background:${p.primary}; color:${p.accent}; padding:4px 8px; font-family:Arial Black,sans-serif; font-size:12px;">BROWSE</div>
             <ul style="list-style:none; padding:8px 10px; margin:0; line-height:1.8; color:${p.primary};">
-              <li>&raquo; <a href="#" style="color:${p.primary};">Bestsellers</a></li>
-              <li>&raquo; <a href="#" style="color:${p.primary};">New Releases</a></li>
-              <li>&raquo; <a href="#" style="color:${p.primary};">Coming Soon</a></li>
-              <li>&raquo; <a href="#" style="color:${p.primary};">Editor's Picks</a></li>
-              <li>&raquo; <a href="#" style="color:${p.primary};">Used &amp; Refurb</a></li>
-              <li>&raquo; <a href="#" style="color:${p.primary};">International</a></li>
-              <li>&raquo; <a href="#" style="color:${p.primary};">Gift Center</a></li>
+              ${browse.map(x => `<li>&raquo; <a href="#" style="color:${p.primary};">${x}</a></li>`).join('')}
             </ul>
           </div>
 
@@ -783,7 +936,7 @@ function tplCorpEcommercePortal(d, p) {
                 const wasPrice = (parseFloat(price) + Math.floor(Math.random()*15+5)).toFixed(2);
                 const iconIdx = (hashStrA(p.domain + 'tile' + i) || 0) % 12;
                 return `<td style="width:33%; padding:10px; border:1px solid #ddd; vertical-align:top; background:#fff;">
-                  ${productIcon(iconIdx, p, 90, 80)}
+                  ${realProductImg(d, i, p, 90, 80) || productIcon(iconIdx, p, 90, 80)}
                   <div style="font-family:Times New Roman,serif; font-size:12px; margin-top:6px; color:${p.primary}; font-weight:bold; min-height:32px;"><a href="#" style="color:${p.primary};">${item.replace(/&#9733;\s*/,'')}</a></div>
                   <div style="font-size:10px; color:#999; margin-top:2px;">${'&#11088;'.repeat(Math.floor(Math.random()*3+3))} <span style="color:#666;">(${Math.floor(Math.random()*900+50)})</span></div>
                   <div style="margin-top:4px;">
@@ -826,6 +979,7 @@ function tplCorpEcommercePortal(d, p) {
 
 /* ---------- 5. CORPORATE CONSUMER BRAND (McDonald's / Frito-Lay) ---------- */
 function tplCorpConsumerBrand(d, p) {
+  const brandNav = realNav(d, ['HOME','OUR PRODUCTS','PROMOTIONS','RESTAURANTS','FUN ZONE','CAREERS','ABOUT US'], 7);
   return `
   <div style="background:${p.accent}; min-height:100vh; padding-bottom:90px; color:#000; font-family:'Arial Black','Arial Rounded MT Bold',Arial,sans-serif;">
 
@@ -839,8 +993,8 @@ function tplCorpConsumerBrand(d, p) {
 
     <!-- Nav strip in brand color -->
     <div style="background:${p.secondary}; padding:8px; text-align:center; border-bottom:3px solid ${p.primary};">
-      ${['HOME','OUR PRODUCTS','PROMOTIONS','RESTAURANTS','FUN ZONE','CAREERS','ABOUT US'].map(x =>
-        `<a href="#" style="display:inline-block; padding:4px 12px; color:${p.accent}; font-family:Arial Black,sans-serif; font-size:13px; text-decoration:none; margin:2px;">${x}</a>`
+      ${brandNav.map(x =>
+        `<a href="#" style="display:inline-block; padding:4px 12px; color:${p.accent}; font-family:Arial Black,sans-serif; font-size:13px; text-decoration:none; margin:2px;">${String(x).toUpperCase()}</a>`
       ).join(' | ')}
     </div>
 
@@ -848,6 +1002,7 @@ function tplCorpConsumerBrand(d, p) {
 
       <!-- Big promo hero card -->
       <div style="background:#fff; border:6px solid ${p.primary}; padding:24px; margin-bottom:14px; text-align:center; box-shadow:8px 8px 0 ${p.secondary};">
+        ${(d.productImages && d.productImages[0]) ? `<div style="max-width:420px; margin:0 auto 14px;"><img src="${d.productImages[0].url}" referrerpolicy="no-referrer" loading="lazy" onerror="this.style.display='none';" alt="" style="width:100%; max-height:240px; object-fit:cover; border:3px ridge ${p.primary};"></div>` : ''}
         <div style="display:inline-block; background:${p.primary}; color:${p.accent}; padding:6px 14px; transform:rotate(-3deg); font-family:Arial Black; font-size:20px; margin-bottom:14px;">&#9733; NEW!! &#9733;</div>
         <h2 style="margin:0 0 12px; font-family:Arial Black,sans-serif; color:${p.primary}; font-size:36px; letter-spacing:-1px;">${d.cta}</h2>
         <p style="font-family:Georgia,serif; font-size:16px; color:#000; line-height:1.6; max-width:560px; margin:0 auto 16px;">${d.welcome}</p>
@@ -892,6 +1047,7 @@ function tplCorpConsumerBrand(d, p) {
 
 /* ---------- 6. BRIGHT GAME ENTERTAINMENT (Sims-style) ---------- */
 function tplBrightEntertainment(d, p) {
+  const navItems = realNav(d, ['HOME','PLAY','DOWNLOADS','COMMUNITY','FAN ART','HELP','SHOP'], 7);
   return `
   <div style="background:${p.accent} url(&quot;data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='60' height='60' viewBox='0 0 60 60'><circle cx='10' cy='10' r='4' fill='%23${p.primary.replace('#','')}40'/><circle cx='40' cy='30' r='3' fill='%23${p.secondary.replace('#','')}40'/><circle cx='20' cy='50' r='5' fill='%23${p.primary.replace('#','')}40'/></svg>&quot;); min-height:100vh; padding-bottom:90px; color:#000; font-family:'Comic Sans MS','Trebuchet MS',sans-serif;">
 
@@ -913,9 +1069,9 @@ function tplBrightEntertainment(d, p) {
 
     <!-- Nav buttons -->
     <div style="background:#fff; border-bottom:3px ridge ${p.primary}; padding:8px 0; text-align:center;">
-      ${['HOME','PLAY','DOWNLOADS','COMMUNITY','FAN ART','HELP','SHOP'].map((x,i) => {
+      ${navItems.map((x,i) => {
         const c = [p.primary, p.secondary, p.primary, p.secondary][i%4];
-        return `<a href="#" style="display:inline-block; padding:5px 14px; background:${c}; color:${p.accent}; border-radius:14px; border:2px solid ${p.accent}; font-family:Trebuchet MS; font-weight:bold; font-size:12px; text-decoration:none; margin:2px;">${x}</a>`;
+        return `<a href="#" style="display:inline-block; padding:5px 14px; background:${c}; color:${p.accent}; border-radius:14px; border:2px solid ${p.accent}; font-family:Trebuchet MS; font-weight:bold; font-size:12px; text-decoration:none; margin:2px;">${String(x).toUpperCase()}</a>`;
       }).join('')}
     </div>
 
@@ -923,6 +1079,7 @@ function tplBrightEntertainment(d, p) {
 
       <!-- Hero card -->
       <div style="background:#fff; border:4px ridge ${p.primary}; padding:22px; text-align:center; border-radius:14px;">
+        ${(d.productImages && d.productImages[0]) ? `<div style="max-width:520px; margin:0 auto 14px;"><img src="${d.productImages[0].url}" referrerpolicy="no-referrer" loading="lazy" onerror="this.style.display='none';" alt="" style="width:100%; max-height:240px; object-fit:cover; border-radius:10px; border:3px ridge ${p.primary};"></div>` : ''}
         <h2 style="margin:0 0 8px; font-family:'Comic Sans MS',sans-serif; font-size:32px; color:${p.primary};">Welcome to ${d.sitename}!</h2>
         <p style="font-family:'Trebuchet MS',sans-serif; font-size:15px; line-height:1.7; color:#000; max-width:560px; margin:0 auto 14px;">${d.welcome}</p>
         <a href="${d.rampLink}" target="_blank" style="display:inline-block; padding:12px 28px; background:linear-gradient(180deg, ${p.primary}, ${p.secondary}); color:${p.accent}; border:4px outset ${p.accent}; border-radius:24px; font-family:'Comic Sans MS'; font-size:20px; font-weight:bold; text-decoration:none;">${d.cta} &raquo;</a>
@@ -932,9 +1089,13 @@ function tplBrightEntertainment(d, p) {
       <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px; margin-top:14px;">
         ${(d.bullets || []).slice(0,3).map((b,i) => {
           const c = i===0 ? p.primary : i===1 ? p.secondary : p.primary;
+          const liveImg = d.productImages && d.productImages[i+1]; // skip [0], it's the hero
+          const medallion = liveImg
+            ? `<div style="width:80px; height:80px; margin:0 auto 8px; border-radius:50%; border:3px solid ${p.accent}; overflow:hidden; background:${c};"><img src="${liveImg.url}" referrerpolicy="no-referrer" loading="lazy" onerror="this.style.display='none';" alt="" style="width:100%; height:100%; object-fit:cover; display:block;"></div>`
+            : `<div style="width:80px; height:80px; margin:0 auto 8px; background:${c}; border-radius:50%; border:3px solid ${p.accent}; display:flex; align-items:center; justify-content:center; font-size:36px; color:${p.accent}; font-family:Comic Sans MS;">${['&#9733;','&#9829;','&#9786;'][i]}</div>`;
           return `
           <div style="background:#fff; border:4px ridge ${c}; padding:14px; border-radius:14px; text-align:center;">
-            <div style="width:80px; height:80px; margin:0 auto 8px; background:${c}; border-radius:50%; border:3px solid ${p.accent}; display:flex; align-items:center; justify-content:center; font-size:36px; color:${p.accent}; font-family:Comic Sans MS;">${['&#9733;','&#9829;','&#9786;'][i]}</div>
+            ${medallion}
             <div style="font-family:'Comic Sans MS',sans-serif; font-size:16px; font-weight:bold; color:${c};">${b.replace(/&#9733;\s*/,'')}</div>
             <a href="#" style="display:inline-block; margin-top:6px; font-family:Trebuchet MS; color:${c}; font-size:12px;">tell me more &raquo;</a>
           </div>`;
@@ -969,6 +1130,7 @@ function tplBrightEntertainment(d, p) {
 
 /* ---------- 7. DESIGN AGENCY EXPERIMENTAL (GMUNK / Chapter3 / Against the Grain) ---------- */
 function tplDesignAgency(d, p) {
+  const agencyNav = realNav(d, ['work','about','clients','press','contact'], 5);
   return `
   <div style="background:${p.accent === '#ffffff' ? '#f5f5f5' : p.accent}; min-height:100vh; padding-bottom:90px; color:${p.secondary}; font-family:'Helvetica','Arial',sans-serif;">
 
@@ -978,7 +1140,7 @@ function tplDesignAgency(d, p) {
     <div style="background:${p.secondary}; padding:8px 14px; border-bottom:1px solid ${p.primary};">
       <table style="width:100%; max-width:1100px; margin:0 auto;"><tr>
         <td style="font-family:Helvetica,sans-serif; font-size:11px; color:${p.accent}; letter-spacing:4px; text-transform:uppercase;">[${d.sitename}/2026]</td>
-        <td style="text-align:right; font-family:Helvetica,sans-serif; font-size:11px; color:${p.accent}; letter-spacing:2px; text-transform:uppercase;">work &nbsp; about &nbsp; clients &nbsp; press &nbsp; contact</td>
+        <td style="text-align:right; font-family:Helvetica,sans-serif; font-size:11px; color:${p.accent}; letter-spacing:2px; text-transform:uppercase;">${agencyNav.map(x => String(x).toLowerCase()).join(' &nbsp; ')}</td>
       </tr></table>
     </div>
 
@@ -998,11 +1160,13 @@ function tplDesignAgency(d, p) {
         ${(d.bullets || []).slice(0,3).map((b,i) => {
           const colors = [p.primary, p.secondary, p.primary];
           const c = colors[i];
+          const liveImg = d.productImages && d.productImages[i];
+          const heroBlock = liveImg
+            ? `<div style="background:${c}; height:160px; position:relative; overflow:hidden;"><img src="${liveImg.url}" referrerpolicy="no-referrer" loading="lazy" onerror="this.style.display='none';" alt="" style="width:100%; height:100%; object-fit:cover; display:block; mix-blend-mode:multiply; opacity:0.85;"><div style="position:absolute; left:12px; bottom:8px; font-family:Helvetica,sans-serif; font-size:48px; font-weight:900; color:${p.accent}; line-height:0.9; mix-blend-mode:difference;">${String(i+1).padStart(2,'0')}</div></div>`
+            : `<div style="background:${c}; height:160px; display:flex; align-items:flex-end; padding:12px;"><div style="font-family:Helvetica,sans-serif; font-size:48px; font-weight:900; color:${p.accent}; line-height:0.9;">${String(i+1).padStart(2,'0')}</div></div>`;
           return `
           <div style="background:#fff; border:1px solid ${p.secondary}40;">
-            <div style="background:${c}; height:160px; display:flex; align-items:flex-end; padding:12px;">
-              <div style="font-family:Helvetica,sans-serif; font-size:48px; font-weight:900; color:${c === p.secondary ? p.accent : p.accent}; line-height:0.9;">${String(i+1).padStart(2,'0')}</div>
-            </div>
+            ${heroBlock}
             <div style="padding:14px;">
               <div style="font-family:Helvetica,sans-serif; font-size:10px; letter-spacing:3px; color:${p.primary}; text-transform:uppercase; margin-bottom:6px;">Case Study &middot; ${1998+i}</div>
               <div style="font-family:Helvetica,sans-serif; font-size:18px; font-weight:bold; color:${p.secondary};">${b.replace(/&#9733;\s*/,'')}</div>
@@ -1043,6 +1207,8 @@ function tplDesignAgency(d, p) {
   </div>`;
 }
 
+window.realNav = realNav;
+window.realProductImg = realProductImg;
 window.tplDarkGameShrine = tplDarkGameShrine;
 window.tplFlashPromoCinematic = tplFlashPromoCinematic;
 window.tplMaximalPortal = tplMaximalPortal;
@@ -1315,18 +1481,7 @@ function renderVariant(d, p) {
   // selectively transform inner content. Skip if voice is 'corporate' (no change).
   // To keep things safe we only transform text inside specific marker classes if templates expose them.
 
-  // 'Simulated Y2K' ribbon: small badge that says this site didn't exist in Y2K
-  // and our render is a stylistic take. Fixed high-contrast colors so it stays
-  // readable on every archetype palette.
-  const ribbon = `
-  <div style="background:#000080; color:#ffffff; padding:6px 14px; border-bottom:2px ridge #ffff00; font-family:Verdana,sans-serif; font-size:11px; letter-spacing:1px;">
-    <table style="width:100%; max-width:1100px; margin:0 auto; border-collapse:collapse;"><tr>
-      <td><b style="color:#ffff00;">&#10024; SIMULATED Y2K</b> &middot; ${p.domain || p.sitename} didn't exist in the year 2000, so we made it up.</td>
-      <td style="text-align:right; opacity:0.85;">archetype: <b>${p.archetype}</b></td>
-    </tr></table>
-  </div>`;
-
-  return applyVariantWrapper(ribbon + inner, p, t);
+  return applyVariantWrapper(inner, p, t);
 }
 
 // Expose
