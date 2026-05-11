@@ -579,10 +579,50 @@ async function renderSite(domain) {
     try {
       const live = await window.lookupLiveSite(domain);
       if (live && live.available) {
-        if (live.title)       data.tagline = escapeText(live.title);
+        // Title: prefer the brand-leading chunk before " | ", " - ", or " — "
+        //   "The AI workspace that works for you. | Notion" → use the right side
+        //   "Figma: The Collaborative Interface Design Tool" → use the left side
+        // We pick the chunk that contains the brand name when possible.
+        if (live.title) {
+          const t = String(live.title).trim();
+          // Split on common title separators: " | ", " \u2014 ", " - ", ": " (colon
+          // doesn't need leading whitespace, e.g. "Web Player: Music for everyone").
+          const parts = t.split(/(?:\s+[\|\u2014\-]\s+|:\s+)/).map(s => s.trim()).filter(Boolean);
+          const brand = domain.split('.')[0].toLowerCase();
+          let tagline = t;
+          if (parts.length >= 2) {
+            // Prefer the chunk that does NOT just say the brand name, AND that
+            // looks like a real tagline (>= 8 chars, contains a space).
+            const taglineLike = parts.filter(p => {
+              const pl = p.toLowerCase();
+              if (pl === brand) return false;
+              if (p.length < 8) return false;
+              return true;
+            });
+            const longerTagline = taglineLike.length
+              ? taglineLike.reduce((a, b) => (b.length > a.length ? b : a))
+              : parts.reduce((a, b) => (b.length > a.length ? b : a));
+            tagline = longerTagline;
+          }
+          data.tagline = escapeText(tagline);
+          // Use the real brand name (proper-cased) as the sitename when the
+          // title contains it. Otherwise fall back to the domain.
+          const brandTitled = brand.charAt(0).toUpperCase() + brand.slice(1);
+          data.sitename = brandTitled;
+          data.displayName = brandTitled;
+        }
         if (live.description) data.welcome = escapeText(live.description);
-        if (live.navLabels && live.navLabels.length)       data.navLabels = live.navLabels.map(escapeText);
+        if (live.navLabels && live.navLabels.length) {
+          data.navLabels = live.navLabels.map(escapeText);
+          // Also overwrite `bullets` with star-prefixed nav so templates that
+          // still use d.bullets get real content. This is what fixes the
+          // "Home / About Us / News &amp; Updates / Contact Webmaster / Sign
+          // Our Guestbook / Links" leak on 2Advanced and similar.
+          data.bullets = live.navLabels.map(l => '&#9733; ' + escapeText(l));
+        }
         if (live.productImages && live.productImages.length) data.productImages = live.productImages;
+        // Flag so renderVariant knows to skip voice transforms on real text.
+        data.__live = true;
       }
     } catch (e) { console.warn('live lookup failed', e); }
   }
@@ -787,10 +827,12 @@ function stripeSiteData() {
 }
 
 function genericSiteData(domain) {
-  const name = domain.split('.')[0].toUpperCase();
+  const raw  = domain.split('.')[0];
+  const name = raw.charAt(0).toUpperCase() + raw.slice(1);
   return {
     domain,
-    sitename: name + '!',
+    sitename: name,
+    displayName: name,
     tagline: '~ * the official ' + domain + ' home-page * ~',
     welcome: 'Welcome to the home-page of ' + name + ' on the world wide web!! This site has been Y2K-ified by Y2KMYSITE.COM for ur viewing pleasure!!',
     bullets: [
@@ -801,7 +843,7 @@ function genericSiteData(domain) {
       '&#9733; Sign Our Guestbook',
       '&#9733; Links',
     ],
-    cta: 'ENTER ' + name + '!',
+    cta: 'ENTER ' + name.toUpperCase() + '!',
     rampLink: ramp('generic-' + domain),
   };
 }
@@ -1002,6 +1044,14 @@ function tplGeocities(d) {
 
 /* ---------- TEMPLATE B: 2ADVANCED STUDIOS DARK FLASH SPLASH ---------- */
 function tpl2Advanced(d) {
+  // Real nav from the live site if we have it. Falls back to category nav,
+  // then to a generic Flash-portal set.
+  const navList = (window.realNav)
+    ? window.realNav(d, ['Mission','Modules','Portfolio','Manifesto','Console','Console02','Contact'], 6)
+    : ['Mission','Modules','Portfolio','Manifesto','Console','Contact'];
+  // Real product image for the side console if we have one. Fall back to the
+  // inline lat/long readout if we don't.
+  const heroImg = (d && d.productImages && d.productImages[0] && d.productImages[0].url) ? d.productImages[0] : null;
   return `
   <div style="background:radial-gradient(ellipse at 50% 40%, #0a2540 0%, #050d18 70%, #000000 100%); min-height:100vh; color:#9fcfff; font-family:'Courier New', monospace; padding:0 0 80px; overflow:hidden; position:relative;">
 
@@ -1011,9 +1061,14 @@ function tpl2Advanced(d) {
       linear-gradient(0deg, transparent 70%, #00000080 100%);"></div>
 
     <!-- top nav strip -->
-    <div style="border-bottom:1px solid #2060a0; padding:10px 20px; font-size:11px; letter-spacing:3px; color:#5090d0; display:flex; justify-content:space-between; align-items:center; background:#00000060;">
+    <div style="border-bottom:1px solid #2060a0; padding:10px 20px; font-size:11px; letter-spacing:3px; color:#5090d0; display:flex; justify-content:space-between; align-items:center; background:#00000060; flex-wrap:wrap; gap:8px;">
       <span>// ${d.domain.toUpperCase()} // v.2.0</span>
       <span style="color:#ffd700;">RAMP_BANNER.SWF :: <a href="${ramp('2adv-top')}" target="_blank" style="color:#ffd700;">CLICK HERE FOR RAMP</a></span>
+    </div>
+
+    <!-- secondary nav: real site sections, styled as 2Advanced module list -->
+    <div style="border-bottom:1px solid #2060a0; padding:8px 20px; font-size:11px; letter-spacing:2px; color:#9fcfff; background:#00000040; display:flex; gap:14px; flex-wrap:wrap; justify-content:center;">
+      ${navList.map(n => `<span style="color:#9fcfff;">// <a href="#" style="color:#ffd700; text-decoration:none;">${String(n).toUpperCase()}</a></span>`).join('')}
     </div>
 
     <!-- centerpiece grid -->
@@ -1028,8 +1083,9 @@ function tpl2Advanced(d) {
         <div style="flex:2; min-width:260px; border:1px solid #2080ff; background:#00000060; padding:18px; clip-path:polygon(0 0, 100% 0, 100% 88%, 92% 100%, 0 100%);">
           <div style="color:#ffd700; font-size:10px; letter-spacing:3px; margin-bottom:8px;">[ MISSION_STATEMENT.TXT ]</div>
           <p style="margin:0 0 10px; color:#ffffff; font-size:13px; line-height:1.5;">${d.welcome}</p>
-          <ul style="font-size:12px; color:#9fcfff; line-height:1.7; list-style:none; padding-left:0;">
-            ${d.bullets.map(b => `<li style="border-left:2px solid #2080ff; padding-left:8px; margin-bottom:6px;">${b}</li>`).join('')}
+          ${heroImg ? `<div style="margin:10px 0 4px; border:1px solid #2080ff; background:#000; padding:4px; max-width:380px;"><img src="${heroImg.url}" referrerpolicy="no-referrer" loading="lazy" onerror="this.parentElement.style.display='none';" alt="" style="width:100%; max-height:200px; object-fit:cover; display:block; filter:contrast(1.05) saturate(0.9);"></div><div style="color:#5090d0; font-size:9px; letter-spacing:3px;">// ASSET_001.JPG</div>` : ''}
+          <ul style="font-size:12px; color:#9fcfff; line-height:1.7; list-style:none; padding-left:0; margin-top:14px;">
+            ${navList.slice(0,5).map((n,i) => `<li style="border-left:2px solid #2080ff; padding-left:8px; margin-bottom:6px;">[ ${String(i+1).padStart(2,'0')} ] <span style="color:#fff;">${String(n).toUpperCase()}</span> <span style="color:#3060a0;">.module</span></li>`).join('')}
           </ul>
         </div>
 

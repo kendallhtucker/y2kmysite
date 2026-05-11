@@ -256,40 +256,79 @@ const __liveCache = {};
 // Best-effort "shorten a long nav label to something nav-y".
 // Examples:
 //   "Notion Your AI workspace" → "Notion"
+//   "Notion Calendar" → "Notion Calendar" (already nav-y)
 //   "Knowledge Base Centralize your knowledge" → "Knowledge Base"
 //   "Sale up to 70% off" → "Sale"
+//   "AI Meeting Notes Perfectly written by AI" → "AI Meeting Notes"
 //   "Wet & Dry Cat Food" → "Wet & Dry Cat Food" (already nav-y)
 function __shortenNavLabel(raw) {
   let s = String(raw || '').trim();
   if (!s) return null;
-  // Strip trailing emoji / arrows / pricing-y noise.
-  s = s.replace(/\s+(→|↑|↓|←|»|«|➜|➡|➞)\s*$/g, '').trim();
+  // Strip trailing emoji / arrows / pricing-y noise (with or without leading whitespace).
+  s = s.replace(/\s*(→|↑|↓|←|»|«|➜|➡|➞|>+)\s*$/g, '').trim();
   s = s.replace(/\s*\(\d+\)\s*$/, '').trim();
   // Drop common verbose suffixes after a separator.
   s = s.replace(/\s*[—–\-:·\|]\s*(centralize|your\s|the\s|a\s|an\s).*$/i, '').trim();
-  // If the label is two clauses joined by a space, the first clause is
-  // usually the nav label and the rest is a sentence-y subtitle. Heuristic:
-  // if it's >3 words AND words 3+ start with a verb-ish lowercase, trim.
+
+  // Core heuristic: nav labels are short capitalized noun phrases. Take the
+  // initial run of words where each word is either Capitalized/numeric/symbol
+  // (Title Case) OR a connective (of/and/the/for/to/in/on/&).
+  // The moment we hit a lowercase "verby" word (your, automate, perfectly,
+  // simple, find, centralize, get, etc) we cut. That turns
+  // "Knowledge Base Centralize your knowledge" → "Knowledge Base"
+  // "Notion Your AI workspace" → "Notion"
+  // "AI Meeting Notes Perfectly written by AI" → "AI Meeting Notes".
   const words = s.split(/\s+/);
-  if (words.length > 4) {
-    // Take the first "capitalized run" — e.g. "Knowledge Base" out of
-    // "Knowledge Base Centralize your knowledge".
-    const cap = [];
-    for (const w of words) {
-      if (cap.length >= 4) break;
-      if (/^[A-Z0-9&]/.test(w) || /^(of|and|the|for|to|in|on)$/i.test(w)) cap.push(w);
-      else break;
+  const connective = /^(of|and|the|for|to|in|on|with|by|de|la|le|du|et|&)$/i;
+  // Product-page tagline verbs that come AFTER a nav label. When we see one
+  // we stop — even if it's capitalized. This is how we cut "Knowledge Base
+  // Centralize your knowledge" → "Knowledge Base", and "Agents Automate
+  // busywork" → "Agents", and "AI Meeting Notes Perfectly written by AI" →
+  // "AI Meeting Notes".
+  const taglineVerb = /^(centralize|automate|automating|perfectly|simple|simply|smart|smarter|find|search|create|build|builds|design|designs|designed|connect|connects|manage|manages|managing|protect|secure|safe|translate|illustrate|produce|publish|prompt|explore|collaborate|co-create|get|gets|getting|translate|streamline|deliver|delivers|delight|delights|empower|empowers|run|runs|running|grow|grows|growing|all-in-one|everywhere|anywhere|everyone|anytime|together|fast|faster|fastest|free|new|best|trusted|loved|powered|powering|now|today|introducing|meet|works?|working|drive|drives|driving|launch|launches|launching|save|saves|saving|spend|spending)\b/i;
+  const capish = (w) => /^[A-Z0-9&!\-]/.test(w) || /^(iPhone|iPad|iMac|iOS|macOS|tvOS|watchOS|eCommerce)$/.test(w);
+  const cap = [];
+  for (let i = 0; i < words.length; i++) {
+    const w = words[i];
+    if (cap.length >= 4) break;
+    // Stop on tagline verbs even if capitalized.
+    if (cap.length > 0 && taglineVerb.test(w)) break;
+    // Allow a connective only if there's another capish word after it.
+    if (connective.test(w)) {
+      const next = words[i + 1];
+      if (next && capish(next) && !taglineVerb.test(next)) { cap.push(w); continue; }
+      break;
     }
-    if (cap.length >= 1 && cap.length < words.length) s = cap.join(' ');
+    if (capish(w)) { cap.push(w); continue; }
+    break;
   }
+  if (cap.length >= 1) s = cap.join(' ');
+
+  // Strip trailing connectives ("Notion AI AI" → "Notion AI"; also "Mail and" → "Mail")
+  while (true) {
+    const tail = s.split(/\s+/);
+    if (tail.length <= 1) break;
+    const last = tail[tail.length - 1];
+    if (connective.test(last)) { s = tail.slice(0, -1).join(' '); continue; }
+    // Collapse "Notion AI AI" → "Notion AI" (immediate duplicate)
+    if (tail.length >= 2 && tail[tail.length - 1].toLowerCase() === tail[tail.length - 2].toLowerCase()) {
+      s = tail.slice(0, -1).join(' ');
+      continue;
+    }
+    break;
+  }
+
   // Cap absolute length.
-  if (s.length > 40) {
-    const cut = s.slice(0, 40);
+  if (s.length > 32) {
+    const cut = s.slice(0, 32);
     const lastSpace = cut.lastIndexOf(' ');
     s = lastSpace > 12 ? cut.slice(0, lastSpace) : cut;
   }
   s = s.replace(/[^\S ]/g, ' ').replace(/\s+/g, ' ').trim();
   if (s.length < 2) return null;
+  // Final sanity: reject pure brand-prefix repeats like "Figma" / "Notion"
+  // when they're identical to a noisy single token (we still allow them in
+  // case they're the only thing, but downstream dedup will drop duplicates).
   return s;
 }
 
@@ -342,25 +381,69 @@ async function lookupLiveSite(domain) {
     const bodyMatch = text.split(/Markdown Content:\s*/);
     const body = bodyMatch.length > 1 ? bodyMatch.slice(1).join('Markdown Content:') : text;
 
-    // Description: first text paragraph that's not a link, image, or heading
+    // Description: find the best hero tagline-ish line. We score candidate
+    // lines and pick the highest. Score rewards length 40-200, presence of
+    // brand-ish marketing words ("workspace", "platform", "design", "build",
+    // "music", "shop"), and penalizes time-sensitive banners ("register
+    // today", "may 13", "black friday"), cookie / consent text, and copy
+    // dominated by URLs.
     let description = null;
     const lines = body.split(/\n+/).map(l => l.trim()).filter(Boolean);
+    const candidates = [];
     for (const line of lines) {
       if (/^[#>!]/.test(line)) continue;
-      if (/^\[/.test(line) && /\]\(/.test(line)) continue; // pure link
+      if (/^\[/.test(line) && /\]\(/.test(line) && line.match(/\]\(/g).length === 1) continue; // pure single link
       if (/^!\[/.test(line)) continue; // image
       const plain = line.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1').replace(/!\[[^\]]*\]\([^)]+\)/g, '').trim();
-      if (plain.length >= 40 && plain.length <= 320) {
-        description = plain;
-        break;
+      if (plain.length < 30 || plain.length > 280) continue;
+      let score = 0;
+      // Length sweet spot
+      if (plain.length >= 50 && plain.length <= 160) score += 10;
+      else if (plain.length >= 40 && plain.length <= 200) score += 5;
+      // Marketing-y words
+      if (/\b(workspace|platform|design|build|create|shop|discover|music|video|stream|store|library|community|free|powerful|simple|fast|all[- ]in[- ]one|everything|everyone|anywhere|together|productivity|productive|trusted|world|leading|complete|modern|premium|millions?|billions?|professional|business|customers?|teams?)\b/i.test(plain)) score += 6;
+      // Penalize banners / dated promos
+      if (/\b(register today|register now|sign up today|may \d|june \d|july \d|jan(uary)? \d|feb(ruary)? \d|mar(ch)? \d|apr(il)? \d|aug(ust)? \d|sep(t|tember)? \d|oct(ober)? \d|nov(ember)? \d|dec(ember)? \d|coming soon|new!?|black friday|cyber monday|labor day|memorial day|early access|beta|launch event|webinar|live now|join us)\b/i.test(plain)) score -= 8;
+      // Penalize cookie / consent / legal text
+      if (/\b(cookies?|consent|gdpr|privacy policy|terms of (use|service)|all rights reserved|we use|by clicking|essential cookies|tracking technologies)\b/i.test(plain)) score -= 12;
+      // Penalize copy that's mostly UI chrome
+      if (/\b(developers?:|note:|disclaimer:|press release|earnings call|read more|see more|view all|browse all|all categories)\b/i.test(plain)) score -= 6;
+      // Penalize copy that's mostly numbers / pricing / pricing-table fragments
+      // ("Team size Monthly savings$340 Annual savings$4,080")
+      const digits = (plain.match(/[\d$%]/g) || []).length;
+      if (digits > 6) score -= 8;
+      if (/\$\d/.test(plain)) score -= 6;
+      // Penalize jammed-together text (suggests stripped tags / pricing widgets)
+      if (/[a-zA-Z]\$|[a-z][A-Z]/.test(plain) && plain.split(/\s+/).length < 10) score -= 4;
+      // Penalize "capitalized word soup" — long runs of single-word
+      // capitalized tokens with no sentence punctuation. Pattern hit by
+      // Figma's stripped nav ("Prompt Design Draw Build Publish Promote").
+      const words = plain.split(/\s+/);
+      if (words.length >= 5) {
+        const capRun = words.filter(w => /^[A-Z][a-z]+$/.test(w)).length;
+        const hasSentencePunct = /[.!?,;:]/.test(plain);
+        if (capRun / words.length > 0.6 && !hasSentencePunct) score -= 15;
       }
+      // Prefer sentences that look like marketing taglines (start with capital, end with . or !)
+      if (/^[A-Z][^.!?]*[.!?]?$/.test(plain) && plain.split(/[.!?]/).filter(Boolean).length <= 3) score += 3;
+      // Penalize all-caps shouting (probably a button)
+      if (plain === plain.toUpperCase() && plain.length > 20) score -= 4;
+      candidates.push({ plain, score });
+      if (candidates.length >= 40) break;
+    }
+    candidates.sort((a, b) => b.score - a.score);
+    if (candidates.length && candidates[0].score > 0) {
+      description = candidates[0].plain;
+    } else if (candidates.length) {
+      // No positive-scoring candidate — fall back to the first non-banner
+      // sentence-ish line. Better than nothing.
+      description = candidates[0].plain;
     }
 
     // Nav labels: pull link texts, then aggressively shorten them.
     // We're more permissive than before (60 chars) and then trust
     // __shortenNavLabel() to produce a clean nav-y string.
-    const navLabels = [];
-    const seenLabels = new Set();
+    const rawNavCandidates = [];
     const linkRe = /\[([^\]]+)\]\(([^)]+)\)/g;
     let m;
     while ((m = linkRe.exec(body)) !== null) {
@@ -368,12 +451,55 @@ async function lookupLiveSite(domain) {
       if (!raw || raw.length > 80) continue;
       if (/^https?:/i.test(raw)) continue;
       if (/^image\s*\d*$/i.test(raw)) continue;
-      // reject obviously bad labels
-      if (/^(register today|click here|learn more|see what|read more|see all|show all|sign in|log in|create account|skip to)/i.test(raw)) continue;
+      // reject obviously bad labels — single-word CTAs and chrome bits.
+      // We anchor with ^...$ patterns so multi-word brand items like
+      // "Dev Mode" aren't accidentally stripped.
+      if (/^(register today|register$|sign ?up$|sign ?in$|log ?in$|login$|logout$|signup$|signin$|join$|try (it )?free|get started|start (free|now)|book a demo|request demo|free trial|click here|learn more|see what|read more|see all|show all|create account|skip to|menu$|search$|cart$|wishlist$|account$|my account|profile$|help$|support$|contact us|contact$|privacy|terms|cookies?$|legal$|accessibility|sitemap|careers$|press$|investors?$|jobs$|status$|blog$|home$|pricing$|download$|downloads$|buy now|shop now|browse$|english|français|español|deutsch|italiano|português|日本|中文|en$|fr$|es$|de$)/i.test(raw)) continue;
       const lbl = __shortenNavLabel(raw);
       if (!lbl) continue;
+      rawNavCandidates.push(lbl);
+      if (rawNavCandidates.length >= 30) break;
+    }
+
+    // Dedupe candidates while preserving order, then decide whether to strip
+    // the brand-name prefix. Notion's nav comes through as "Notion Calendar",
+    // "Notion Mail", "Notion AI" — stripping "Notion " yields a much crisper
+    // nav: "Calendar / Mail / AI / Agents / Docs ...".
+    const brandToken = String(key).split('.')[0].toLowerCase();
+    const dedupedCandidates = [];
+    const seenRaw = new Set();
+    for (const l of rawNavCandidates) {
+      const lc = l.toLowerCase();
+      if (seenRaw.has(lc)) continue;
+      if (lc === brandToken) continue;
+      seenRaw.add(lc);
+      dedupedCandidates.push(l);
+      if (dedupedCandidates.length >= 16) break;
+    }
+    // Count how many of the top candidates start with the brand token.
+    const brandPrefixCount = dedupedCandidates.filter(l =>
+      l.toLowerCase().split(/\s+/)[0] === brandToken
+    ).length;
+    // Strip if at least 3 of the first ~12 nav-able candidates carry the brand prefix.
+    const stripBrand = brandPrefixCount >= 3;
+
+    const navLabels = [];
+    const seenLabels = new Set();
+    for (let lbl of dedupedCandidates) {
+      if (stripBrand) {
+        const parts = lbl.split(/\s+/);
+        if (parts.length > 1 && parts[0].toLowerCase() === brandToken) {
+          lbl = parts.slice(1).join(' ').trim();
+          if (!lbl) continue;
+        }
+      }
+      // Drop possessive / determiner-leading labels ("Your AI", "My Account")
+      // when they're 2-3 words — those are usually account / personalization
+      // chrome, not the brand's product nav.
+      if (/^(your|my|our|the|a|an)\s/i.test(lbl) && lbl.split(/\s+/).length <= 3) continue;
       const k = lbl.toLowerCase();
       if (seenLabels.has(k)) continue;
+      if (k === brandToken) continue;
       seenLabels.add(k);
       navLabels.push(lbl);
       if (navLabels.length >= 12) break;
@@ -841,6 +967,10 @@ function tplDarkGameShrine(d, p) {
 
 /* ---------- 2. FLASH PROMO CINEMATIC (Requiem / Rockstar) ---------- */
 function tplFlashPromoCinematic(d, p) {
+  // Pull real nav (branded products / sections), filtered & deduped, with a
+  // sensible film-y fallback for sites that don't return nav (chewy, petco).
+  const scenes = realNav(d, ['Prologue','Act One','Act Two','Act Three','Epilogue','Credits'], 3).slice(0, 3);
+  const heroImgCell = realProductImg(d, 0, p, 560, 280);
   return `
   <div style="background:${p.secondary}; min-height:100vh; padding-bottom:90px; color:${p.accent}; font-family:'Arial Black','Impact',sans-serif; position:relative; overflow:hidden;">
 
@@ -862,6 +992,12 @@ function tplFlashPromoCinematic(d, p) {
         </div>
       </div>
 
+      <!-- Real product hero image "film still" -->
+      <div style="margin:0 auto 24px; max-width:640px; border:6px double ${p.accent}; box-shadow:12px 12px 0 ${p.accent}40; padding:6px; background:${p.primary};">
+        ${heroImgCell}
+        <div style="text-align:center; padding:8px 0 0; font-family:'Times New Roman',serif; font-style:italic; color:${p.accent}80; font-size:11px; letter-spacing:3px;">STILL FROM &ldquo;${d.sitename.toUpperCase()}&rdquo; &mdash; MMXXVI</div>
+      </div>
+
       <!-- "Now showing" promo card -->
       <div style="margin:30px auto; max-width:640px; background:${p.primary}; border:6px double ${p.accent}; padding:28px 22px; box-shadow:12px 12px 0 ${p.accent}40;">
         <div style="font-family:'Times New Roman',serif; font-style:italic; color:${p.accent}; font-size:14px; letter-spacing:6px; text-align:center;">NOW PLAYING</div>
@@ -872,12 +1008,12 @@ function tplFlashPromoCinematic(d, p) {
         </div>
       </div>
 
-      <!-- Three-up "scenes" -->
+      <!-- Three-up "scenes" (real nav labels when available) -->
       <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; margin:20px 0;">
-        ${(d.bullets || []).slice(0,3).map((b,i) => `
+        ${scenes.map((b,i) => `
           <div style="background:${p.primary}80; border-left:4px solid ${p.accent}; padding:14px;">
             <div style="font-family:'Times New Roman',serif; font-style:italic; color:${p.accent}80; font-size:11px; letter-spacing:3px;">SCENE ${String(i+1).padStart(2,'0')}</div>
-            <div style="font-family:'Impact',sans-serif; color:${p.accent}; font-size:18px; margin-top:6px; letter-spacing:1px;">${b.replace(/&#9733;\s*/,'')}</div>
+            <div style="font-family:'Impact',sans-serif; color:${p.accent}; font-size:18px; margin-top:6px; letter-spacing:1px;">${String(b).replace(/&#9733;\s*/,'')}</div>
           </div>
         `).join('')}
       </div>
@@ -1642,13 +1778,20 @@ function renderVariant(d, p) {
     if (/<[a-z!][^>]*>/i.test(str)) return str; // contains HTML — leave alone
     return applyVoice(str, t);
   };
+  // When the data came from a real live-site lookup (d.__live), don't voice-
+  // mangle the tagline or bullets — those are the real brand strings and the
+  // entire goal is for them to read as the real site.
+  const isLive = !!d.__live;
   const dVar = {
     ...d,
     sitename: d.sitename,
-    tagline:  safeVoice(d.tagline),
+    tagline:  isLive ? d.tagline : safeVoice(d.tagline),
     welcome:  d.welcome, // never voice-transform; templates inject as HTML
     cta:      applyHeadingCase(d.cta || 'Enter site', t),
-    bullets:  (d.bullets || []).map(b => safeVoice(b)),
+    bullets:  isLive ? (d.bullets || []) : (d.bullets || []).map(b => safeVoice(b)),
+    // navLabels were already produced by the live pipeline; preserve as-is.
+    navLabels: d.navLabels,
+    productImages: d.productImages,
     // Pass the brand category through so realNav() can pick a
     // brand-appropriate fallback (no Books/Music/Video on Petco).
     category: p.category,
