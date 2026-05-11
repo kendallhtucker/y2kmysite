@@ -879,7 +879,7 @@ function rampHitCounter() {
 
 function topMarquee() {
   return `<marquee scrollamount="6" style="background:#000080; color:#ffff00; font-family:'Courier New',monospace; font-size:14px; padding:4px; border-bottom:2px ridge #ffd700;">
-    &#9733; NEW! Ramp announces auto-coding A.I. &mdash; 67% increase in accuracy!! &#9733; &nbsp;&nbsp; Try RAMP free for 14 days @ <a href="${ramp('top-marquee')}" target="_blank" style="color:#ff80ff;">ramp.com</a> &#9733; &nbsp;&nbsp; Y2K compliant since MMXIX!! &#9733; &nbsp;&nbsp; Your finance software should be better than it was in 1999!! &#9733;
+    &#9733; NEW! Ramp announces auto-coding A.I., 67% increase in accuracy!! &#9733; &nbsp;&nbsp; Try RAMP free for 14 days @ <a href="${ramp('top-marquee')}" target="_blank" style="color:#ff80ff;">ramp.com</a> &#9733; &nbsp;&nbsp; Y2K compliant since MMXIX!! &#9733; &nbsp;&nbsp; Your finance software should be better than it was in 1999!! &#9733;
   </marquee>`;
 }
 
@@ -904,7 +904,7 @@ function underConstructionGif() {
 }
 
 function footerTag() {
-  return `Brought to you by <a href="${ramp('footer-tag')}" target="_blank"><b>Ramp&trade;</b></a> &mdash; because your finance software should be better than it was in 1999.`;
+  return `Brought to you by <a href="${ramp('footer-tag')}" target="_blank"><b>Ramp&trade;</b></a>, because your finance software should be better than it was in 1999.`;
 }
 
 /* ---------- TEMPLATE A: GEOCITIES / HOMER PAGE ---------- */
