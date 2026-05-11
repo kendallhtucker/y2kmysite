@@ -506,20 +506,26 @@ function bumpAndShowCounter(domain) {
   const perDomainUp = perDomain + 'up';
 
   // Step 1: check the per-domain counter.
+  // count===0 or 404 means the domain has never been counted globally.
   fetch(perDomain, { cache: 'no-store' })
     .then(r => {
-      if (r.status === 400 || r.status === 404) {
-        // Globally new domain. Bump master + create per-domain counter.
-        return Promise.all([
-          fetch(masterBump,  { cache: 'no-store' }).then(x => x.ok ? x.json() : null),
-          fetch(perDomainUp, { cache: 'no-store' })
-        ]).then(([j]) => j);
+      const isMissing = (r.status === 400 || r.status === 404);
+      if (isMissing) {
+        return null; // forces the new-domain branch below
       }
-      if (r.ok) {
+      return r.ok ? r.json() : null;
+    })
+    .then(perJson => {
+      const alreadyCounted = perJson && typeof perJson.count === 'number' && perJson.count > 0;
+      if (alreadyCounted) {
         // Already counted globally. Just read master, no bump.
         return fetch(masterRead, { cache: 'no-store' }).then(x => x.ok ? x.json() : null);
       }
-      return null;
+      // Globally new domain. Bump master + per-domain counter.
+      return Promise.all([
+        fetch(masterBump,  { cache: 'no-store' }).then(x => x.ok ? x.json() : null),
+        fetch(perDomainUp, { cache: 'no-store' })
+      ]).then(([j]) => j);
     })
     .then(j => {
       window.__y2kCounterPending = false;
