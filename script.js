@@ -469,11 +469,38 @@ function renderSite(domain) {
 
   // Show persistent footbar
   document.getElementById('footbar').classList.remove('hidden');
-  document.getElementById('visit-count').textContent = formatCounter(50847193 + Math.floor(Math.random() * 9999));
+  bumpAndShowCounter();
   window.scrollTo(0,0);
 }
 
 function formatCounter(n) { return n.toLocaleString('en-US'); }
+
+// Real live counter: increments shared counter on counterapi.dev,
+// shows resulting count in the marquee. This is the *actual* number of
+// sites y2k-ified across all visitors. If the API is unreachable, we
+// hide the inline number rather than lie.
+function bumpAndShowCounter() {
+  const el = document.getElementById('visit-count');
+  if (!el) return;
+  // Guard against double-counting if user re-runs flow rapidly
+  if (window.__y2kCounterPending) return;
+  window.__y2kCounterPending = true;
+  el.textContent = '...';
+  fetch('https://api.counterapi.dev/v1/y2kmysite/sites_generated/up', { cache: 'no-store' })
+    .then(r => r.ok ? r.json() : null)
+    .then(j => {
+      window.__y2kCounterPending = false;
+      if (j && typeof j.count === 'number') {
+        el.textContent = formatCounter(j.count);
+      } else {
+        el.textContent = 'many';
+      }
+    })
+    .catch(() => {
+      window.__y2kCounterPending = false;
+      el.textContent = 'many';
+    });
+}
 
 function enrichWithLiveFetch(domain, data) {
   // Best-effort, CORS-friendly. We try a simple text excerpt from a public proxy; fail silently.
