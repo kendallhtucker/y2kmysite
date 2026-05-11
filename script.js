@@ -414,6 +414,7 @@ const CURATED = {
   'apple.com':   { template: 'apple2000',   data: null },
   'stripe.com':  { template: '2advanced',   data: stripeSiteData() },
   'openai.com':  { template: 'openai2000',  data: null },
+  'linear.app':  { template: 'linear2000',  data: null },
 };
 
 // Templates available for unknown / hash-routed sites
@@ -455,6 +456,7 @@ function renderSite(domain) {
   else if (template === 'nytimes2000') html = tplNYTimes2000();
   else if (template === 'apple2000')   html = tplApple2000();
   else if (template === 'openai2000')  html = tplOpenAI2000();
+  else if (template === 'linear2000')  html = tplLinear2000();
   else if (template === 'geocities')   html = tplGeocities(data);
   else if (template === '2advanced')   html = tpl2Advanced(data);
   else if (template === 'yahoo')       html = tplYahoo(data);
@@ -1015,7 +1017,7 @@ function tplGoogle2000() {
     <div style="margin-top:60px; font-family:Arial,sans-serif; font-size:11px;">
       <span style="color:#666;">&copy;2000 Google Inc.</span> &nbsp;|&nbsp;
       <a href="#" style="color:#0000cc;">About</a> &nbsp;|&nbsp;
-      <a href="#" style="color:#0000cc;">Search Tips</a> &nbsp;|&nbsp;
+      <a href="https://www.apple.com/us/search/search+tips" target="_blank" style="color:#0000cc;">Search Tips</a> &nbsp;|&nbsp;
       <a href="#" style="color:#0000cc;">Feedback</a> &nbsp;|&nbsp;
       <a href="${ramp('google2000-hiring')}" target="_blank" style="color:#0000cc;">We&apos;re Hiring!</a>
     </div>
@@ -1044,7 +1046,7 @@ function tplNYTimes2000() {
 
     <div style="font-family:Arial,sans-serif; font-size:11px; padding:4px 10px; border-bottom:1px solid #ccc; display:flex; justify-content:space-between; flex-wrap:wrap;">
       <span><b>THURSDAY, NOVEMBER 9, 2000</b> &nbsp; 9:24 AM ET</span>
-      <span><a href="#" style="color:#0000cc;">Personalize Your Weather</a></span>
+      <span><a href="https://www.nytimes.com/section/weather" target="_blank" style="color:#0000cc;">Personalize Your Weather</a></span>
     </div>
 
     <!-- 3-column table layout -->
@@ -1054,44 +1056,43 @@ function tplNYTimes2000() {
       <td style="width:130px; background:#f0f0f0; padding:8px 6px; border-right:1px solid #ccc; font-family:Arial,sans-serif; font-size:11px;">
 
         <!-- search -->
-        <div style="background:#fff; padding:4px; border:1px solid #ccc; margin-bottom:8px;">
+        <form onsubmit="var q=this.q.value.trim();if(q){window.open('https://www.nytimes.com/search?query='+encodeURIComponent(q),'_blank');}return false;" style="background:#fff; padding:4px; border:1px solid #ccc; margin-bottom:8px; display:block;">
           <b style="color:#900;">SEARCH</b><br>
           <label><input type="radio" name="ny" checked> Latest News</label><br>
           <label><input type="radio" name="ny"> Archives</label><br>
-          <input type="text" style="width:100%; font-size:10px; margin-top:2px;">
-          <div style="margin-top:2px;"><button style="font-size:10px;">Search</button> <a href="#" style="color:#0000cc; font-size:10px;">Tips</a></div>
-        </div>
+          <input type="text" name="q" autocomplete="off" style="width:100%; font-size:10px; margin-top:2px;">
+          <div style="margin-top:2px;"><button type="submit" style="font-size:10px; cursor:pointer;">Search</button> <a href="https://help.nytimes.com/hc/en-us/sections/115004809527-Search" target="_blank" style="color:#0000cc; font-size:10px;">Tips</a></form>
 
-        <a href="#" style="color:#0000cc;">Jobs</a> | <a href="#" style="color:#0000cc;">Real Estate</a> | <a href="#" style="color:#0000cc;">Shopping</a>
+        <a href="https://www.nytimes.com/section/business" target="_blank" style="color:#0000cc;">Jobs</a> | <a href="https://www.nytimes.com/section/realestate" target="_blank" style="color:#0000cc;">Real Estate</a> | <a href="https://www.nytimes.com/wirecutter/" target="_blank" style="color:#0000cc;">Shopping</a>
 
         <div style="background:#003366; color:#fff; padding:3px 6px; margin:10px 0 4px; font-weight:bold;">NEWS</div>
-        <a href="#" style="color:#0000cc; display:block;">Business</a>
-        <a href="#" style="color:#0000cc; display:block;">Editorial/Op-Ed</a>
-        <a href="#" style="color:#0000cc; display:block;">International</a>
-        <a href="#" style="color:#0000cc; display:block;">National</a>
-        <a href="#" style="color:#0000cc; display:block;">New York Region</a>
-        <a href="#" style="color:#0000cc; display:block;">NYT Front Page</a>
-        <a href="#" style="color:#0000cc; display:block;">Obituaries</a>
-        <a href="#" style="color:#0000cc; display:block;">Politics</a>
-        <a href="#" style="color:#0000cc; display:block;">Quick News</a>
-        <a href="#" style="color:#0000cc; display:block;">Science/Health</a>
-        <a href="#" style="color:#0000cc; display:block;">Sports</a>
-        <a href="#" style="color:#0000cc; display:block;">Tech/Internet</a>
-        <a href="#" style="color:#0000cc; display:block;">Weather</a>
+        <a href="https://www.nytimes.com/section/business" target="_blank" style="color:#0000cc; display:block;">Business</a>
+        <a href="https://www.nytimes.com/section/opinion" target="_blank" style="color:#0000cc; display:block;">Editorial/Op-Ed</a>
+        <a href="https://www.nytimes.com/section/world" target="_blank" style="color:#0000cc; display:block;">International</a>
+        <a href="https://www.nytimes.com/section/us" target="_blank" style="color:#0000cc; display:block;">National</a>
+        <a href="https://www.nytimes.com/section/nyregion" target="_blank" style="color:#0000cc; display:block;">New York Region</a>
+        <a href="https://www.nytimes.com/" target="_blank" style="color:#0000cc; display:block;">NYT Front Page</a>
+        <a href="https://www.nytimes.com/section/obituaries" target="_blank" style="color:#0000cc; display:block;">Obituaries</a>
+        <a href="https://www.nytimes.com/section/politics" target="_blank" style="color:#0000cc; display:block;">Politics</a>
+        <a href="https://www.nytimes.com/" target="_blank" style="color:#0000cc; display:block;">Quick News</a>
+        <a href="https://www.nytimes.com/section/science" target="_blank" style="color:#0000cc; display:block;">Science/Health</a>
+        <a href="https://www.nytimes.com/section/sports" target="_blank" style="color:#0000cc; display:block;">Sports</a>
+        <a href="https://www.nytimes.com/section/technology" target="_blank" style="color:#0000cc; display:block;">Tech/Internet</a>
+        <a href="https://www.nytimes.com/section/weather" target="_blank" style="color:#0000cc; display:block;">Weather</a>
         <div style="border-top:1px solid #ccc; margin:4px 0;"></div>
-        <a href="#" style="color:#0000cc; display:block;">Corrections</a>
+        <a href="https://www.nytimes.com/section/corrections" target="_blank" style="color:#0000cc; display:block;">Corrections</a>
 
         <div style="background:#003366; color:#fff; padding:3px 6px; margin:10px 0 4px; font-weight:bold;">FEATURES</div>
-        <a href="#" style="color:#0000cc;">Arts</a> | <a href="#" style="color:#0000cc;">Books</a> | <a href="#" style="color:#0000cc;">Cartoons</a> | <a href="#" style="color:#0000cc;">Crossword</a> | <a href="#" style="color:#0000cc;">Forums</a> | <a href="#" style="color:#0000cc;">Magazine</a> | <a href="#" style="color:#0000cc;">Travel</a>
+        <a href="https://www.nytimes.com/section/arts" target="_blank" style="color:#0000cc;">Arts</a> | <a href="https://www.nytimes.com/section/books" target="_blank" style="color:#0000cc;">Books</a> | <a href="https://www.newyorker.com/cartoons" target="_blank" style="color:#0000cc;">Cartoons</a> | <a href="https://www.nytimes.com/crosswords" target="_blank" style="color:#0000cc;">Crossword</a> | <a href="https://www.nytimes.com/section/opinion" target="_blank" style="color:#0000cc;">Forums</a> | <a href="https://www.nytimes.com/section/magazine" target="_blank" style="color:#0000cc;">Magazine</a> | <a href="https://www.nytimes.com/section/travel" target="_blank" style="color:#0000cc;">Travel</a>
 
         <div style="background:#003366; color:#fff; padding:3px 6px; margin:10px 0 4px; font-weight:bold;">SERVICES</div>
-        <a href="#" style="color:#0000cc;">Archives</a> | <a href="#" style="color:#0000cc;">Classifieds</a> | <a href="#" style="color:#0000cc;">Help</a> | <a href="#" style="color:#0000cc;">NYT Store</a> | <a href="#" style="color:#0000cc;">Site Index</a>
+        <a href="https://www.nytimes.com/sitemap/" target="_blank" style="color:#0000cc;">Archives</a> | <a href="https://www.nytimes.com/section/classifieds" target="_blank" style="color:#0000cc;">Classifieds</a> | <a href="https://help.nytimes.com/" target="_blank" style="color:#0000cc;">Help</a> | <a href="https://store.nytimes.com/" target="_blank" style="color:#0000cc;">NYT Store</a> | <a href="https://www.nytimes.com/sitemap/" target="_blank" style="color:#0000cc;">Site Index</a>
 
         <!-- Ramp ad #1: a small sidebar text link, blends with shopping section -->
         <div style="background:#003366; color:#fff; padding:3px 6px; margin:10px 0 4px; font-weight:bold;">SHOPPING</div>
-        <a href="#" style="color:#0000cc; display:block;">Wine</a>
-        <a href="#" style="color:#0000cc; display:block;">Jewelry</a>
-        <a href="#" style="color:#0000cc; display:block;">Travel</a>
+        <a href="https://www.nytimes.com/section/food" target="_blank" style="color:#0000cc; display:block;">Wine</a>
+        <a href="https://www.nytimes.com/section/style" target="_blank" style="color:#0000cc; display:block;">Jewelry</a>
+        <a href="https://www.nytimes.com/section/travel" target="_blank" style="color:#0000cc; display:block;">Travel</a>
         <a href="${ramp('nyt-shopping')}" target="_blank" style="color:#cc0000; display:block; font-weight:bold;">Corporate Cards (NEW!)</a>
 
       </td>
@@ -1100,7 +1101,7 @@ function tplNYTimes2000() {
       <td style="padding:10px 14px; vertical-align:top;">
 
         <h1 style="font-family:Georgia,serif; font-size:22px; line-height:1.15; margin:0 0 6px; color:#003366; font-weight:bold;">
-          <a href="#" style="color:#003366; text-decoration:none;">Bush Barely Ahead of Gore In Florida; Recount Holds Key</a>
+          <a href="https://www.nytimes.com/search?query=Bush+Barely+Ahead+of+Gore+In+Florida+Recount+Holds+Key+2000" target="_blank" style="color:#003366; text-decoration:none;">Bush Barely Ahead of Gore In Florida; Recount Holds Key</a>
         </h1>
 
         <!-- ASCII-ish pixel "photo" placeholder (Florida recount workers) -->
@@ -1109,21 +1110,21 @@ function tplNYTimes2000() {
         </div>
 
         <div style="font-family:Arial,sans-serif; font-size:10px; color:#666;">By <b>RICHARD L. BERKE</b> &nbsp;|&nbsp; <i>FROM THURSDAY&apos;S TIMES</i></div>
-        <p style="margin:6px 0 4px; line-height:1.5;">For the first time in more than a century, the winner of a presidential election remained unknown a full day after the polls closed. <a href="#" style="color:#0000cc;">[Go to Article]</a></p>
+        <p style="margin:6px 0 4px; line-height:1.5;">For the first time in more than a century, the winner of a presidential election remained unknown a full day after the polls closed. <a href="https://www.nytimes.com/search?query=Bush+Barely+Ahead+of+Gore+In+Florida+Recount+Holds+Key+2000" target="_blank" style="color:#0000cc;">[Go to Article]</a></p>
 
         <ul style="margin:4px 0 12px 18px; padding:0; font-family:Arial,sans-serif; font-size:11px; line-height:1.6;">
-          <li><a href="#" style="color:#0000cc;">Florida Recount Cuts Bush&apos;s Lead in Half</a></li>
-          <li><a href="#" style="color:#0000cc;">News Analysis: Recipe for a Stalemate</a></li>
-          <li><a href="#" style="color:#0000cc;">Florida Democrats Say Ballot&apos;s Design Hurt Gore</a></li>
+          <li><a href="https://www.nytimes.com/search?query=Florida+Recount+Cuts+Bush+Lead+in+Half+2000" target="_blank" style="color:#0000cc;">Florida Recount Cuts Bush&apos;s Lead in Half</a></li>
+          <li><a href="https://www.nytimes.com/search?query=Recipe+for+a+Stalemate+election+2000" target="_blank" style="color:#0000cc;">News Analysis: Recipe for a Stalemate</a></li>
+          <li><a href="https://www.nytimes.com/search?query=Florida+Democrats+Ballot+Design+Hurt+Gore+2000" target="_blank" style="color:#0000cc;">Florida Democrats Say Ballot&apos;s Design Hurt Gore</a></li>
         </ul>
 
         <h2 style="font-family:Georgia,serif; font-size:17px; margin:14px 0 4px; color:#003366;">
-          <a href="#" style="color:#003366; text-decoration:none;">G.O.P. Clings to Control in Congress, but Democrats Gain in Both Chambers</a>
+          <a href="https://www.nytimes.com/search?query=GOP+Clings+Control+Congress+Democrats+Gain+Chambers+2000" target="_blank" style="color:#003366; text-decoration:none;">G.O.P. Clings to Control in Congress, but Democrats Gain in Both Chambers</a>
         </h2>
         <div style="font-family:Arial,sans-serif; font-size:10px; color:#666;">By <b>ADAM CLYMER</b></div>
         <ul style="margin:4px 0 12px 18px; padding:0; font-family:Arial,sans-serif; font-size:11px; line-height:1.6;">
-          <li><a href="#" style="color:#0000cc;">Democrats Gain Several Senate Seats</a></li>
-          <li><a href="#" style="color:#0000cc;">G.O.P. Gains a Future Edge in Districting</a></li>
+          <li><a href="https://www.nytimes.com/search?query=Democrats+Gain+Several+Senate+Seats+2000" target="_blank" style="color:#0000cc;">Democrats Gain Several Senate Seats</a></li>
+          <li><a href="https://www.nytimes.com/search?query=GOP+Future+Edge+Districting+2000" target="_blank" style="color:#0000cc;">G.O.P. Gains a Future Edge in Districting</a></li>
         </ul>
 
         <!-- Ramp ad #2: a 468x60-style banner, era-correct rendering -->
@@ -1137,11 +1138,11 @@ function tplNYTimes2000() {
         </div>
 
         <h3 style="font-family:Arial,sans-serif; font-size:11px; color:#cc0000; font-weight:bold; margin:14px 0 2px; letter-spacing:1px;">INTERNATIONAL</h3>
-        <a href="#" style="color:#003366; font-family:Georgia,serif; font-size:14px; font-weight:bold; text-decoration:none;">Violence Flares as Arafat Arrives in U.S. for Peace Talks</a>
+        <a href="https://www.nytimes.com/search?query=Arafat+Arrives+US+Peace+Talks+2000" target="_blank" style="color:#003366; font-family:Georgia,serif; font-size:14px; font-weight:bold; text-decoration:none;">Violence Flares as Arafat Arrives in U.S. for Peace Talks</a>
         <span style="color:#666; font-family:Arial; font-size:10px;"> (7:24 a.m.)</span>
 
         <h3 style="font-family:Arial,sans-serif; font-size:11px; color:#cc0000; font-weight:bold; margin:14px 0 2px; letter-spacing:1px;">POLITICS</h3>
-        <a href="#" style="color:#003366; font-family:Georgia,serif; font-size:14px; font-weight:bold; text-decoration:none;">First Lady Emerges From Shadow and Begins to Cast Her Own</a>
+        <a href="https://www.nytimes.com/search?query=Hillary+Clinton+First+Lady+Shadow+2000" target="_blank" style="color:#003366; font-family:Georgia,serif; font-size:14px; font-weight:bold; text-decoration:none;">First Lady Emerges From Shadow and Begins to Cast Her Own</a>
         <span style="color:#666; font-family:Arial; font-size:10px;"> (2:53 a.m.)</span>
 
         <h3 style="font-family:Arial,sans-serif; font-size:11px; color:#cc0000; font-weight:bold; margin:14px 0 2px; letter-spacing:1px;">BUSINESS</h3>
@@ -1149,7 +1150,7 @@ function tplNYTimes2000() {
         <span style="color:#666; font-family:Arial; font-size:10px;"> (6:10 a.m.)</span>
 
         <h3 style="font-family:Arial,sans-serif; font-size:11px; color:#cc0000; font-weight:bold; margin:14px 0 2px; letter-spacing:1px;">N.Y. REGION</h3>
-        <a href="#" style="color:#003366; font-family:Georgia,serif; font-size:14px; font-weight:bold; text-decoration:none;">U.S. Plans a Lottery System to Cut La Guardia Flights</a>
+        <a href="https://www.nytimes.com/search?query=Lottery+System+La+Guardia+Flights+2000" target="_blank" style="color:#003366; font-family:Georgia,serif; font-size:14px; font-weight:bold; text-decoration:none;">U.S. Plans a Lottery System to Cut La Guardia Flights</a>
         <span style="color:#666; font-family:Arial; font-size:10px;"> (2:08 a.m.)</span>
 
         <!-- Election 2000 navy box -->
@@ -1158,10 +1159,10 @@ function tplNYTimes2000() {
           <div style="border:1px solid #003366; padding:8px; font-family:Arial,sans-serif; font-size:11px;">
             <b>Election Features:</b>
             <ul style="margin:4px 0 0 18px; padding:0; line-height:1.6;">
-              <li><a href="#" style="color:#0000cc;">Complete Election Results</a></li>
-              <li><a href="#" style="color:#0000cc;">How the Results Are Collected and Projected</a></li>
-              <li><a href="#" style="color:#0000cc;">E-mail Updates</a></li>
-              <li><a href="#" style="color:#0000cc;">Discuss the Election</a></li>
+              <li><a href="https://www.nytimes.com/search?query=2000+election+results" target="_blank" style="color:#0000cc;">Complete Election Results</a></li>
+              <li><a href="https://www.nytimes.com/search?query=how+election+results+collected+projected+2000" target="_blank" style="color:#0000cc;">How the Results Are Collected and Projected</a></li>
+              <li><a href="https://www.nytimes.com/newsletters" target="_blank" style="color:#0000cc;">E-mail Updates</a></li>
+              <li><a href="https://www.nytimes.com/section/politics" target="_blank" style="color:#0000cc;">Discuss the Election</a></li>
             </ul>
             <div style="margin-top:8px; border-top:1px solid #003366; padding-top:6px;">
               <b>RESULTS &mdash; PRESIDENT (as of 9:24 a.m.)</b>
@@ -1182,7 +1183,7 @@ function tplNYTimes2000() {
         <div style="background:#003366; color:#fff; padding:3px 6px; font-weight:bold;">INSIDE</div>
         <div style="border:1px solid #003366; padding:6px; border-top:0;">
           <b style="color:#cc0000;">CIRCUITS</b><br>
-          <a href="#" style="color:#003366; font-weight:bold;">A New M.I.T. Media Lab</a>
+          <a href="https://www.nytimes.com/search?query=Walter+Bender+MIT+Media+Lab+2000" target="_blank" style="color:#003366; font-weight:bold;">A New M.I.T. Media Lab</a>
           <p style="margin:4px 0 0; color:#000; font-size:11px;">Walter Bender takes over an institution where re-invention is constant.</p>
         </div>
 
@@ -1205,10 +1206,10 @@ function tplNYTimes2000() {
 
         <div style="background:#003366; color:#fff; padding:3px 6px; font-weight:bold; margin-top:12px;">LATEST AP / REUTERS</div>
         <div style="border:1px solid #003366; padding:6px; border-top:0; font-size:11px; line-height:1.5;">
-          <a href="#" style="color:#003366;">Dow Sinks on Election Uncertainty</a> <span style="color:#666;">9:18 a.m.</span><br>
-          <a href="#" style="color:#003366;">Florida Recount Continues</a> <span style="color:#666;">9:02 a.m.</span><br>
+          <a href="https://www.nytimes.com/search?query=Dow+sinks+election+uncertainty+November+2000" target="_blank" style="color:#003366;">Dow Sinks on Election Uncertainty</a> <span style="color:#666;">9:18 a.m.</span><br>
+          <a href="https://www.nytimes.com/search?query=Florida+recount+continues+November+2000" target="_blank" style="color:#003366;">Florida Recount Continues</a> <span style="color:#666;">9:02 a.m.</span><br>
           <a href="${ramp('nyt-wire')}" target="_blank" style="color:#003366;">Ramp.com Raises Series B</a> <span style="color:#666;">8:47 a.m.</span><br>
-          <a href="#" style="color:#003366;">Mideast Tensions Escalate</a> <span style="color:#666;">8:30 a.m.</span>
+          <a href="https://www.nytimes.com/search?query=Mideast+tensions+escalate+November+2000" target="_blank" style="color:#003366;">Mideast Tensions Escalate</a> <span style="color:#666;">8:30 a.m.</span>
         </div>
 
       </td>
@@ -1216,7 +1217,7 @@ function tplNYTimes2000() {
 
     <div style="text-align:center; padding:14px; font-family:Arial,sans-serif; font-size:11px; color:#666; border-top:1px solid #ccc;">
       Copyright 2000 The New York Times Company &nbsp;|&nbsp;
-      <a href="#" style="color:#0000cc;">Privacy Information</a>
+      <a href="https://help.nytimes.com/hc/en-us/articles/115014892108-Privacy-policy" target="_blank" style="color:#0000cc;">Privacy Information</a>
       <div style="margin-top:8px;"><button data-restart style="background:#ececec; border:1px solid #999; padding:2px 10px; font-family:Arial; font-size:11px;">[Y2K-ify another site]</button></div>
     </div>
   </div>`;
@@ -1265,15 +1266,15 @@ function tplApple2000() {
     <!-- secondary nav -->
     <div style="background:#dcdcdc; padding:5px 20px; border-bottom:1px solid #888;">
       <div style="max-width:980px; margin:0 auto; text-align:center; font-family:'Lucida Grande',Arial,sans-serif; font-size:11px;">
-        <a href="#" style="color:#003399; margin:0 6px;">Hot News</a> |
+        <a href="https://www.apple.com/newsroom/" target="_blank" style="color:#003399; margin:0 6px;">Hot News</a> |
         <a href="${ramp('apple-hiring')}" target="_blank" style="color:#003399; margin:0 6px;">Hiring</a> |
-        <a href="#" style="color:#003399; margin:0 6px;">Hardware</a> |
-        <a href="#" style="color:#003399; margin:0 6px;">Software</a> |
-        <a href="#" style="color:#003399; margin:0 6px;">Made4Mac</a> |
-        <a href="#" style="color:#003399; margin:0 6px;">Education</a> |
-        <a href="#" style="color:#003399; margin:0 6px;">Creative</a> |
-        <a href="#" style="color:#003399; margin:0 6px;">Small Biz</a> |
-        <a href="#" style="color:#003399; margin:0 6px;">Developer</a>
+        <a href="https://www.apple.com/shop/buy-mac" target="_blank" style="color:#003399; margin:0 6px;">Hardware</a> |
+        <a href="https://www.apple.com/app-store/" target="_blank" style="color:#003399; margin:0 6px;">Software</a> |
+        <a href="https://www.apple.com/shop/mac/mac-accessories" target="_blank" style="color:#003399; margin:0 6px;">Made4Mac</a> |
+        <a href="https://www.apple.com/education/" target="_blank" style="color:#003399; margin:0 6px;">Education</a> |
+        <a href="https://www.apple.com/creativity/" target="_blank" style="color:#003399; margin:0 6px;">Creative</a> |
+        <a href="https://www.apple.com/business/small-business/" target="_blank" style="color:#003399; margin:0 6px;">Small Biz</a> |
+        <a href="https://developer.apple.com/" target="_blank" style="color:#003399; margin:0 6px;">Developer</a>
       </div>
     </div>
 
@@ -1324,7 +1325,7 @@ function tplApple2000() {
           <div style="height:120px; display:flex; align-items:flex-end; justify-content:center;">
             <div style="width:60px; height:110px; background:linear-gradient(180deg,#d4d4d4 0%,#a8a8a8 100%); border:1px solid #888; border-radius:4px; box-shadow:inset 2px 0 0 #ededed, 2px 2px 6px #00000020;"></div>
           </div>
-          <div style="font-family:'Lucida Grande',Arial,sans-serif; font-size:12px; margin-top:8px;"><a href="#" style="color:#003399; font-weight:bold;">Power Mac G4</a></div>
+          <div style="font-family:'Lucida Grande',Arial,sans-serif; font-size:12px; margin-top:8px;"><a href="https://www.apple.com/shop/buy-mac/mac-studio" target="_blank" style="color:#003399; font-weight:bold;">Power Mac G4</a></div>
           <div style="font-family:'Garamond',serif; font-size:13px; color:#666; font-style:italic; margin-top:2px;">Supercomputer. Personal.</div>
         </td>
 
@@ -1337,7 +1338,7 @@ function tplApple2000() {
               <div style="position:absolute; left:0; right:0; bottom:0; height:4px; background:#222;"></div>
             </div>
           </div>
-          <div style="font-family:'Lucida Grande',Arial,sans-serif; font-size:12px; margin-top:8px;"><a href="#" style="color:#003399; font-weight:bold;">The new PowerBook.</a></div>
+          <div style="font-family:'Lucida Grande',Arial,sans-serif; font-size:12px; margin-top:8px;"><a href="https://www.apple.com/macbook-pro/" target="_blank" style="color:#003399; font-weight:bold;">The new PowerBook.</a></div>
           <div style="font-family:'Garamond',serif; font-size:13px; color:#666; font-style:italic; margin-top:2px;">Make desktop movies on the go.</div>
         </td>
 
@@ -1360,14 +1361,14 @@ function tplApple2000() {
       <div style="margin-top:30px; padding-top:14px; border-top:1px solid #ccc; font-family:'Lucida Grande',Arial,sans-serif; font-size:11px; color:#666; display:flex; gap:14px; flex-wrap:wrap; align-items:center;">
         <input type="text" style="font-family:Arial; font-size:11px; padding:2px 4px; border:1px solid #888; width:180px;">
         <button style="font-family:Arial; font-size:11px; padding:1px 10px; border:1px solid #888; background:#ededed;">Search</button>
-        <span><a href="#" style="color:#003399;">Site Map</a> | <a href="#" style="color:#003399;">Search Tips</a> | <a href="#" style="color:#003399;">Options</a> | <a href="#" style="color:#003399;">Keywords</a></span>
+        <span><a href="https://www.apple.com/sitemap/" target="_blank" style="color:#003399;">Site Map</a> | <a href="https://www.apple.com/us/search/search+tips" target="_blank" style="color:#003399;">Search Tips</a> | <a href="https://www.apple.com/shop/" target="_blank" style="color:#003399;">Options</a> | <a href="https://www.apple.com/sitemap/" target="_blank" style="color:#003399;">Keywords</a></span>
       </div>
 
       <div style="margin-top:18px; font-family:'Lucida Grande',Arial,sans-serif; font-size:11px; color:#666; text-align:center;">
         Visit other Apple sites around the world:
         <select style="font-family:Arial; font-size:11px;"><option>Choose...</option><option>USA</option><option>Japan</option><option>UK</option></select>
         <br><br>
-        <a href="#" style="color:#003399;">Contact Us</a> | <a href="#" style="color:#003399;">Privacy Notice</a><br>
+        <a href="https://www.apple.com/contact/" target="_blank" style="color:#003399;">Contact Us</a> | <a href="https://www.apple.com/legal/privacy/" target="_blank" style="color:#003399;">Privacy Notice</a><br>
         Copyright &copy; 2000 Apple Computer, Inc. All rights reserved.<br>
         1-800-MY-APPLE
         <div style="margin-top:14px;"><button data-restart style="background:#ededed; border:1px solid #888; padding:2px 10px; font-family:Arial; font-size:11px;">[Y2K-ify another site]</button></div>
@@ -1556,6 +1557,171 @@ function tplOpenAI2000() {
         <a href="${ramp('openai-footer')}" target="_blank" style="color:#0000ee;">Sponsors</a> &nbsp;|&nbsp;
         <a href="mailto:webmaster@openai.com" style="color:#0000ee;">webmaster@openai.com</a>
         <div style="margin-top:6px; font-size:9px; color:#888;">Best viewed at 800&times;600 in Internet Explorer 5.0 or Netscape Navigator 4.7 with JAVA enabled.</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ============================================================
+// LINEAR.APP — re-imagined as a 1999 demoscene release
+// concept: warez-scene NFO file for a fictional "project tracker"
+// aesthetic: black bg, neon green/magenta/cyan, ANSI box-drawing,
+//            scrolling greetz, "RELEASED BY FAIRLIGHT" framing
+// ============================================================
+function tplLinear2000() {
+  // Pre-built ASCII art for LINEAR (block-style)
+  const asciiLogo = [
+'  ____    ____   ____   _____  ____    ____   _____   _____ ',
+' || L \\\\ || || ||  \\\\ ||==|| ||==||  ||==||  ||==||  ||==/ ',
+' ||___// ||__|| ||__// ||__|| ||  ||  ||  ||  ||  ||  ||  | ',
+  ].join('\n');
+
+  // NFO-style top border
+  const nfoTop    = '&#9556;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9559;';
+  const nfoBottom = '&#9562;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9565;';
+  const nfoSide   = '&#9553;';
+  const nfoDivide = '&#9568;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9571;';
+
+  const greetz = [
+    'github', 'vercel', 'supabase', 'sentry', 'figma', 'notion', 'cursor',
+    'arc.net', 'raycast', 'fly.io', 'planetscale', 'tailwind labs', 'shadcn',
+    'and all the BUILDERS keeping the demoscene ALIVE in 1999 :: ::'
+  ].join('  ::  ');
+
+  // Sample ASCII issue-tracker rows
+  const issues = [
+    { id: 'ENG-0451', title: 'fix race condition in sync engine',           prio: 'HIGH', status: 'IN_PROG' },
+    { id: 'ENG-0452', title: 'add keyboard shortcut for new issue (cmd+I)', prio: 'MED',  status: 'TODO   ' },
+    { id: 'ENG-0453', title: 'Y2K rollover: dates after 2000 display wrong',prio: 'CRIT', status: 'IN_PROG' },
+    { id: 'ENG-0454', title: 'finance team needs Ramp.com integration',     prio: 'HIGH', status: 'TODO   ' },
+    { id: 'ENG-0455', title: 'dark mode (post-Y2K trend, ship by Q2)',      prio: 'LOW',  status: 'BACKLOG' },
+  ];
+
+  return `
+  <div style="background:#000; min-height:100vh; padding:24px 0 100px; font-family:'Courier New','Lucida Console','Consolas',monospace; color:#0f0; overflow-x:auto;">
+
+    <!-- top warez-scene ribbon -->
+    <div style="text-align:center; color:#ff00ff; font-size:11px; letter-spacing:4px; margin-bottom:10px;">
+      &lt;&lt;&lt; &#9619;&#9618;&#9617; <span style="color:#0ff;">FAIRLIGHT PRESENTS</span> &#9617;&#9618;&#9619; &gt;&gt;&gt;
+    </div>
+
+    <!-- ASCII LOGO -->
+    <pre style="color:#0ff; font-size:14px; line-height:1.1; text-align:center; margin:0 0 6px; white-space:pre; text-shadow:0 0 6px #0ff;">${asciiLogo}</pre>
+
+    <div style="text-align:center; color:#ff00ff; font-size:12px; letter-spacing:6px; margin-bottom:18px;">
+      &#9617;&#9618;&#9619; PROJECT TRACKER v1.99 &#9619;&#9618;&#9617;
+    </div>
+
+    <!-- NFO BLOCK -->
+    <div style="max-width:880px; margin:0 auto; padding:0 14px;">
+      <pre style="color:#0f0; font-size:13px; line-height:1.35; margin:0; white-space:pre;">${nfoTop}
+${nfoSide}                                                                            ${nfoSide}
+${nfoSide}     <span style="color:#ff00ff;">LINEAR.APP // PROJECT TRACKER v1.99 // RELEASE BY FAIRLIGHT 2000</span>     ${nfoSide}
+${nfoSide}                                                                            ${nfoSide}
+${nfoSide}     <span style="color:#0ff;">RELEASE DATE</span> ... 12.31.1999 23:59:58 GMT  <span style="color:#0ff;">(pre-Y2K cert.)</span>      ${nfoSide}
+${nfoSide}     <span style="color:#0ff;">CRACK BY</span> ....... <span style="color:#ffff00;">RZR-1911</span>                                          ${nfoSide}
+${nfoSide}     <span style="color:#0ff;">DISKS</span> .......... 1 / 1                                            ${nfoSide}
+${nfoSide}     <span style="color:#0ff;">PROTECTION</span> ..... 128-BIT SSL + ANGEL DUST                         ${nfoSide}
+${nfoSide}     <span style="color:#0ff;">REQUIRES</span> ....... Pentium II 233MHz + 64MB RAM + Java 1.1.8       ${nfoSide}
+${nfoSide}                                                                            ${nfoSide}
+${nfoDivide}
+${nfoSide}                                                                            ${nfoSide}
+${nfoSide}                          <span style="color:#ff00ff;">.: ABOUT THIS RELEASE :.</span>                          ${nfoSide}
+${nfoSide}                                                                            ${nfoSide}
+${nfoSide}   LINEAR is the FASTEST way to track issues on the WORLD WIDE WEB.         ${nfoSide}
+${nfoSide}   built for HACKERS, by HACKERS, in MMXIX.  no flash. no shockwave.        ${nfoSide}
+${nfoSide}   just KEYBOARD SHORTCUTS and pure post-Y2K SPEED.                         ${nfoSide}
+${nfoSide}                                                                            ${nfoSide}
+${nfoBottom}</pre>
+
+      <!-- 2-col: issue tracker + sidebar -->
+      <div style="display:flex; gap:18px; margin-top:24px; flex-wrap:wrap;">
+
+        <!-- LEFT: live ASCII issue tracker -->
+        <div style="flex:2; min-width:380px;">
+          <div style="color:#ff00ff; font-size:12px; letter-spacing:4px; margin-bottom:6px;">// ACTIVE_QUEUE.DAT</div>
+          <pre style="color:#0f0; font-size:12px; line-height:1.5; margin:0; padding:10px; border:1px solid #0f0; background:rgba(0,40,0,0.4); white-space:pre; box-shadow:0 0 12px rgba(0,255,0,0.2) inset;">&#9484;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9516;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9516;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9516;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9488;
+&#9474;   ID    &#9474; TITLE                                        &#9474; PRIO &#9474; STATUS  &#9474;
+&#9500;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9532;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9532;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9532;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9508;
+${issues.map(i => `&#9474; ${i.id} &#9474; ${i.title.padEnd(44)} &#9474; ${i.prio.padEnd(4)} &#9474; ${i.status} &#9474;`).join('\n')}
+&#9492;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9524;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9524;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9524;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9496;</pre>
+
+          <div style="margin-top:10px; color:#888; font-size:11px;">
+            [F1]=help &nbsp; [N]=new issue &nbsp; [/]=search &nbsp; [G]o-to &nbsp; [Q]=quit
+          </div>
+
+          <!-- new issue input (live: opens linear.app) -->
+          <form onsubmit="window.open('https://linear.app/','_blank');return false;" style="margin-top:16px; display:flex; gap:6px;">
+            <span style="color:#0ff; padding-top:4px;">&gt;</span>
+            <input type="text" placeholder="enter new issue title and press [N]EW..." autocomplete="off" style="flex:1; background:#000; color:#0f0; border:1px solid #0f0; padding:4px 6px; font-family:inherit; font-size:12px; outline:none; box-shadow:0 0 4px rgba(0,255,0,0.4) inset;">
+            <button type="submit" style="background:#000; color:#ff00ff; border:1px solid #ff00ff; padding:4px 12px; font-family:inherit; font-size:12px; letter-spacing:2px; cursor:pointer;">[N]EW &raquo;</button>
+          </form>
+
+          <!-- INSTALL.EXE big button -->
+          <div style="margin-top:24px; text-align:center;">
+            <a href="https://linear.app/" target="_blank" style="display:inline-block; background:#000; color:#0ff; border:2px solid #0ff; padding:10px 30px; font-family:inherit; font-size:16px; letter-spacing:6px; text-decoration:none; box-shadow:0 0 18px rgba(0,255,255,0.6); text-shadow:0 0 4px #0ff;">
+              &#9619;&#9618;&#9617;  INSTALL.EXE  &#9617;&#9618;&#9619;
+            </a>
+            <div style="margin-top:6px; color:#666; font-size:10px;">launches LINEAR.APP // requires modern browser</div>
+          </div>
+        </div>
+
+        <!-- RIGHT: sidebar -->
+        <div style="flex:1; min-width:240px; display:flex; flex-direction:column; gap:18px;">
+
+          <!-- Ramp ad styled as sister demoscene release -->
+          <div style="border:1px solid #ff00ff; background:rgba(40,0,40,0.4); padding:12px; box-shadow:0 0 12px rgba(255,0,255,0.2) inset;">
+            <div style="color:#ff00ff; font-size:10px; letter-spacing:4px; margin-bottom:6px;">// SISTER_RELEASE.NFO</div>
+            <pre style="color:#0ff; font-size:11px; line-height:1.2; margin:0 0 8px; white-space:pre;">&#9484;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9488;
+&#9474;   RAMP.EXE   &#9474;
+&#9474;   v.1.99     &#9474;
+&#9492;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9496;</pre>
+            <p style="color:#fff; font-size:11px; line-height:1.5; margin:0 0 8px;">
+              <span style="color:#ffff00;">RAMP</span> &mdash; the corporate card cracked for the post-Y2K economy. closes the books <span style="color:#ff00ff;">8x faster</span> than competitor warez.
+            </p>
+            <a href="${ramp('linear-scene')}" target="_blank" style="color:#ffff00; font-size:11px; text-decoration:none; border:1px solid #ffff00; padding:2px 8px; display:inline-block;">&raquo; DOWNLOAD.RAMP</a>
+          </div>
+
+          <!-- shoutz / greetz panel -->
+          <div style="border:1px solid #0f0; background:rgba(0,30,0,0.4); padding:10px;">
+            <div style="color:#0ff; font-size:10px; letter-spacing:4px; margin-bottom:6px;">// SCROLLZ</div>
+            <div style="color:#888; font-size:10px; line-height:1.4;">
+              .: SHOUTZ TO :.<br>
+              <span style="color:#0f0;">github &middot; vercel &middot; supabase</span><br>
+              <span style="color:#0f0;">sentry &middot; figma &middot; notion</span><br>
+              <span style="color:#0f0;">cursor &middot; arc &middot; raycast</span><br>
+              <span style="color:#0f0;">fly.io &middot; planetscale</span><br>
+              <span style="color:#0f0;">tailwind &middot; shadcn</span><br>
+              <br>
+              .: KEEPING THE SCENE ALIVE :.
+            </div>
+          </div>
+
+          <!-- system stats -->
+          <div style="border:1px solid #0f0; padding:10px; font-size:10px; color:#0f0;">
+            // SYS_STATS<br>
+            <span style="color:#888;">CPU.....</span> P-II 233MHz<br>
+            <span style="color:#888;">RAM.....</span> 64MB OK<br>
+            <span style="color:#888;">DISK....</span> 8.4 GB FREE<br>
+            <span style="color:#888;">MODEM...</span> US ROBOTICS 56K<br>
+            <span style="color:#888;">UPLINK..</span> <span style="color:#0ff;">FAIRLIGHT BBS</span><br>
+            <span style="color:#888;">UPTIME..</span> 99.99%
+          </div>
+        </div>
+      </div>
+
+      <!-- scrolling greetz marquee -->
+      <div style="margin-top:30px; border-top:1px solid #ff00ff; border-bottom:1px solid #ff00ff; padding:8px 0; background:rgba(40,0,40,0.2);">
+        <marquee scrollamount="6" style="color:#ff00ff; font-size:12px; letter-spacing:2px;">
+          &#9617;&#9618;&#9619; GREETZ &#9619;&#9618;&#9617;  ::  ${greetz}  ::  &#9617;&#9618;&#9619; FAIRLIGHT 4 EVER &#9619;&#9618;&#9617;  ::  ALL YOUR PROJECT MANAGEMENT ARE BELONG TO US  ::  &raquo; <a href="${ramp('linear-marquee')}" target="_blank" style="color:#ffff00;">ramp.exe // sister release</a> &laquo;  ::
+        </marquee>
+      </div>
+
+      <!-- footer copy -->
+      <div style="margin-top:24px; text-align:center; color:#666; font-size:10px; line-height:1.6;">
+        // LINEAR.APP &copy; MMXIX &mdash; this NFO authored by <span style="color:#0ff;">FAIRLIGHT</span> in MMXX<br>
+        for the &laquo;HACKERS&raquo; who BUILD &mdash; not the suits who buy JIRA<br>
+        Y2K-COMPLIANT // 56,600 BPS OPTIMIZED // ANSI.SYS REQUIRED
       </div>
     </div>
   </div>`;
