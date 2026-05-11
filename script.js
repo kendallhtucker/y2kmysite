@@ -469,29 +469,44 @@ function renderSite(domain) {
 
   // Show persistent footbar
   document.getElementById('footbar').classList.remove('hidden');
-  bumpAndShowCounter();
+  bumpAndShowCounter(domain);
   window.scrollTo(0,0);
 }
 
 function formatCounter(n) { return n.toLocaleString('en-US'); }
 
-// Real live counter: increments shared counter on counterapi.dev,
-// shows resulting count in the marquee. This is the *actual* number of
-// sites y2k-ified across all visitors. If the API is unreachable, we
-// hide the inline number rather than lie.
-function bumpAndShowCounter() {
+// Counts UNIQUE sites that have been Y2K-ified.
+// Only bumps the shared counter the first time a given domain is generated
+// in this browser (tracked via localStorage). Otherwise just reads the count.
+function bumpAndShowCounter(domain) {
   const el = document.getElementById('visit-count');
   if (!el) return;
-  // Guard against double-counting if user re-runs flow rapidly
   if (window.__y2kCounterPending) return;
+
+  // Have we already counted this domain in this browser?
+  let already = false;
+  try {
+    const seen = JSON.parse(localStorage.getItem('y2k_seen') || '[]');
+    if (domain && seen.indexOf(domain) !== -1) {
+      already = true;
+    } else if (domain) {
+      seen.push(domain);
+      localStorage.setItem('y2k_seen', JSON.stringify(seen));
+    }
+  } catch (e) { /* localStorage unavailable */ }
+
   window.__y2kCounterPending = true;
   el.textContent = '...';
-  fetch('https://api.counterapi.dev/v1/y2kmysite/sites_generated/up', { cache: 'no-store' })
+  const endpoint = already
+    ? 'https://api.counterapi.dev/v1/y2kmysite/sites_generated/'
+    : 'https://api.counterapi.dev/v1/y2kmysite/sites_generated/up';
+  fetch(endpoint, { cache: 'no-store' })
     .then(r => r.ok ? r.json() : null)
     .then(j => {
       window.__y2kCounterPending = false;
       if (j && typeof j.count === 'number') {
-        el.textContent = formatCounter(j.count);
+        const real = Math.max(0, j.count - QA_OFFSET);
+        el.textContent = formatCounter(real);
       } else {
         el.textContent = 'many';
       }
@@ -987,7 +1002,9 @@ document.addEventListener('DOMContentLoaded', () => {
   loadHomeCounter();
 });
 
-// Read the live count without incrementing
+// Read the live count without incrementing.
+// QA_OFFSET subtracts test traffic we logged during development.
+const QA_OFFSET = 14;
 function loadHomeCounter() {
   const el = document.getElementById('home-counter');
   if (!el) return;
@@ -995,7 +1012,8 @@ function loadHomeCounter() {
     .then(r => r.ok ? r.json() : null)
     .then(j => {
       if (j && typeof j.count === 'number') {
-        el.textContent = String(j.count).padStart(9, '0');
+        const real = Math.max(0, j.count - QA_OFFSET);
+        el.textContent = String(real).padStart(9, '0');
       }
     })
     .catch(() => {});
