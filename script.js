@@ -549,6 +549,7 @@ function stripeSiteData() {
       '// flash-based checkout flow (req. Macromedia Shockwave)',
     ],
     cta: '&raquo; ENTER SITE &laquo;',
+    ctaLink: 'https://stripe.com/',
     rampLink: ramp('stripe-curated'),
   };
 }
@@ -796,7 +797,7 @@ function tpl2Advanced(d) {
 
         <!-- side panel: enter button + ramp ad -->
         <div style="flex:1; min-width:200px; display:flex; flex-direction:column; gap:14px;">
-          <a href="${d.rampLink}" target="_blank" style="display:block; border:1px solid #ffd700; background:#000; padding:24px; text-align:center; color:#ffd700; text-decoration:none; font-family:'Arial Black',sans-serif; letter-spacing:6px; font-size:18px; clip-path:polygon(0 0, 100% 0, 100% 80%, 90% 100%, 0 100%);">
+          <a href="${d.ctaLink || d.rampLink}" target="_blank" style="display:block; border:1px solid #ffd700; background:#000; padding:24px; text-align:center; color:#ffd700; text-decoration:none; font-family:'Arial Black',sans-serif; letter-spacing:6px; font-size:18px; clip-path:polygon(0 0, 100% 0, 100% 80%, 90% 100%, 0 100%);">
             ${d.cta}
           </a>
 
