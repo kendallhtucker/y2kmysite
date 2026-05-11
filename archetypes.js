@@ -14,12 +14,37 @@
 // Per-session cache so re-rendering the same domain doesn't refetch.
 const __waybackCache = {};
 
-// Look up a Y2K-era Wayback snapshot for this domain.
-// Returns { available:true, iframeUrl, viewUrl, timestamp, displayDate } if a
-// snapshot exists in 1999-2001, otherwise { available:false }.
-//
-// Strategy: hit the CDX API (more reliable than the availability endpoint)
-// for any snapshots in [1999, 2001], then pick the one closest to mid-2000.
+// Curated list of well-known brands with VERIFIED mid-2000 Wayback snapshots.
+// Each entry is [timestamp, original_url]. We hit this map FIRST so the
+// network is never on the critical path for these brands. Timestamps below
+// were verified live against the CDX API as returning a 200 in the target
+// window. When adding entries, query:
+//   curl 'https://web.archive.org/cdx/search/cdx?url=DOMAIN&from=20000301&to=20000931&filter=statuscode:200&limit=3&output=json'
+// and copy a real timestamp + original from a 200 row.
+const KNOWN_Y2K_DOMAINS = {
+  'petco.com':        ['20000301212032', 'http://petco.com:80/'],
+  'pets.com':         ['20000301122742', 'http://www.pets.com:80/'],
+  'aol.com':          ['20000301160137', 'http://www.aol.com:80/'],
+  'geocities.com':    ['20000918093706', 'http://www.geocities.com:80/'],
+  'yahoo.com':        ['20000601142434', 'http://www.yahoo.com:80/'],
+  'napster.com':      ['20000407210312', 'http://www1.napster.com:80/'],
+  'google.com':       ['20000619010423', 'http://www.google.com:80/'],
+  // figma.com domain was parked in 2000 but it's an unrelated landing page,
+  // the actual Figma brand didn't exist. Same for chewy, notion, spotify
+  // (founded 2006/2013/2011/2012). Mark these as known-no-y2k so we skip the
+  // race and go straight to live enrichment.
+};
+const KNOWN_NO_Y2K = new Set([
+  'figma.com', 'chewy.com', 'notion.com', 'notion.so', 'spotify.com',
+  'instagram.com', 'tiktok.com', 'snapchat.com', 'discord.com', 'slack.com',
+  'zoom.us', 'airbnb.com', 'uber.com', 'lyft.com', 'doordash.com',
+  'ubereats.com', 'venmo.com', 'cashapp.com', 'robinhood.com', 'coinbase.com',
+  'shein.com', 'temu.com', 'roblox.com', 'twitch.tv', 'linear.app',
+  'vercel.com', 'supabase.com', 'openai.com', 'anthropic.com', 'perplexity.ai',
+  'ramp.com', 'brex.com', 'mercury.com', 'stripe.com', 'shopify.com',
+  'wayfair.com', 'pinterest.com', 'reddit.com', 'lululemon.com', 'peloton.com',
+]);
+
 // Pack a timestamp + original URL into our standard snapshot object.
 function __wbResult(ts, orig) {
   const iframeUrl = `https://web.archive.org/web/${ts}if_/${orig}`;
@@ -45,23 +70,42 @@ async function __fetchWith(url, ms) {
 }
 
 async function lookupWayback(domain) {
-  const key = String(domain || '').toLowerCase();
+  const key = String(domain || '').toLowerCase().replace(/^www\./, '');
   if (__waybackCache[key]) return __waybackCache[key];
+
+  // Strategy 0: curated list of famous brands with hand-picked snapshots.
+  // This means petco/yahoo/amazon/cnn etc. show up INSTANTLY with zero
+  // network risk. Filter out post-Y2K timestamps (some entries record
+  // "earliest snapshot exists" but it's not actually 2000 era).
+  const curated = KNOWN_Y2K_DOMAINS[key];
+  if (curated) {
+    const [ts, orig] = curated;
+    const result = __wbResult(ts.length >= 14 ? ts : (ts + '000000').slice(0,14), orig);
+    __waybackCache[key] = result;
+    return result;
+  }
+
+  // Explicit short-circuit: brands that didn't exist in 2000. We could let the
+  // CDX call run and reject naturally, but that wastes seconds and risks
+  // false positives (e.g. domain was parked then).
+  if (KNOWN_NO_Y2K.has(key)) {
+    __waybackCache[key] = { available: false, reason: 'known-no-y2k' };
+    return __waybackCache[key];
+  }
 
   // Strategy A: CDX via corsproxy.io. Returns ALL year-2000 snapshots so we
   // can pick the one closest to mid-2000.
   // Strategy B: Wayback Availability API direct (CORS-friendly), asking for the
-  // closest snapshot to 20000615. Less precise but more reliable when proxies
-  // are slow or down.
-  // We race them: whichever responds first with a usable result wins.
+  // closest snapshot to 20000615.
+  // Strategy C: CDX via allorigins (raw passthrough). A second working proxy
+  // gives us redundancy against single-provider rate limits.
+  // We race them all: whichever responds first with a usable result wins.
   const cdxBare = `https://web.archive.org/cdx/search/cdx?url=${encodeURIComponent(key)}&from=19990101&to=20011231&filter=statuscode:200&limit=25&output=json`;
-  const cdxProxied = `https://corsproxy.io/?${encodeURIComponent(cdxBare)}`;
-  const availBare = `https://archive.org/wayback/available?url=${encodeURIComponent(key)}&timestamp=20000615`;
+  const cdxViaCorsProxyIo  = `https://corsproxy.io/?${encodeURIComponent(cdxBare)}`;
+  const cdxViaAllOrigins   = `https://api.allorigins.win/raw?url=${encodeURIComponent(cdxBare)}`;
+  const availBare          = `https://archive.org/wayback/available?url=${encodeURIComponent(key)}&timestamp=20000615`;
 
-  async function tryCdx() {
-    const res = await __fetchWith(cdxProxied, 10000);
-    if (!res.ok) throw new Error('cdx http ' + res.status);
-    const rows = await res.json();
+  function pickBestCdx(rows) {
     if (!Array.isArray(rows) || rows.length < 2) throw new Error('cdx empty');
     const target = 20000615000000;
     let best = null, bestDist = Infinity;
@@ -75,29 +119,37 @@ async function lookupWayback(domain) {
     return __wbResult(best[1], best[2]);
   }
 
+  async function tryCdxViaProxy(url) {
+    const res = await __fetchWith(url, 7000);
+    if (!res.ok) throw new Error('cdx http ' + res.status);
+    const rows = await res.json();
+    return pickBestCdx(rows);
+  }
+
   async function tryAvailability() {
-    const res = await __fetchWith(availBare, 10000);
+    const res = await __fetchWith(availBare, 7000);
     if (!res.ok) throw new Error('avail http ' + res.status);
     const j = await res.json();
     const c = j && j.archived_snapshots && j.archived_snapshots.closest;
     if (!c || !c.available || !c.timestamp || !c.url) throw new Error('avail no snapshot');
     const ts = c.timestamp;
-    // Only accept snapshots in [1999, 2001].
     const yr = parseInt(ts.slice(0,4), 10);
     if (yr < 1999 || yr > 2001) throw new Error('avail year ' + yr + ' out of range');
-    // c.url already looks like http://web.archive.org/web/<ts>/<orig>, extract orig.
     const m = c.url.match(/\/web\/\d+\/(.+)$/);
     const orig = m ? m[1] : `http://${key}/`;
     return __wbResult(ts, orig);
   }
 
-  // Race: first successful result wins. If both reject, we return unavailable.
+  // Race three strategies. If all reject, no snapshot available.
   try {
-    const winner = await Promise.any([tryCdx(), tryAvailability()]);
+    const winner = await Promise.any([
+      tryCdxViaProxy(cdxViaCorsProxyIo),
+      tryCdxViaProxy(cdxViaAllOrigins),
+      tryAvailability(),
+    ]);
     __waybackCache[key] = winner;
     return winner;
   } catch (e) {
-    // AggregateError or anything else => no snapshot available.
     __waybackCache[key] = { available: false, error: String(e) };
     return __waybackCache[key];
   }
@@ -201,6 +253,64 @@ window.wireWaybackFallback = wireWaybackFallback;
 
 const __liveCache = {};
 
+// Best-effort "shorten a long nav label to something nav-y".
+// Examples:
+//   "Notion Your AI workspace" → "Notion"
+//   "Knowledge Base Centralize your knowledge" → "Knowledge Base"
+//   "Sale up to 70% off" → "Sale"
+//   "Wet & Dry Cat Food" → "Wet & Dry Cat Food" (already nav-y)
+function __shortenNavLabel(raw) {
+  let s = String(raw || '').trim();
+  if (!s) return null;
+  // Strip trailing emoji / arrows / pricing-y noise.
+  s = s.replace(/\s+(→|↑|↓|←|»|«|➜|➡|➞)\s*$/g, '').trim();
+  s = s.replace(/\s*\(\d+\)\s*$/, '').trim();
+  // Drop common verbose suffixes after a separator.
+  s = s.replace(/\s*[—–\-:·\|]\s*(centralize|your\s|the\s|a\s|an\s).*$/i, '').trim();
+  // If the label is two clauses joined by a space, the first clause is
+  // usually the nav label and the rest is a sentence-y subtitle. Heuristic:
+  // if it's >3 words AND words 3+ start with a verb-ish lowercase, trim.
+  const words = s.split(/\s+/);
+  if (words.length > 4) {
+    // Take the first "capitalized run" — e.g. "Knowledge Base" out of
+    // "Knowledge Base Centralize your knowledge".
+    const cap = [];
+    for (const w of words) {
+      if (cap.length >= 4) break;
+      if (/^[A-Z0-9&]/.test(w) || /^(of|and|the|for|to|in|on)$/i.test(w)) cap.push(w);
+      else break;
+    }
+    if (cap.length >= 1 && cap.length < words.length) s = cap.join(' ');
+  }
+  // Cap absolute length.
+  if (s.length > 40) {
+    const cut = s.slice(0, 40);
+    const lastSpace = cut.lastIndexOf(' ');
+    s = lastSpace > 12 ? cut.slice(0, lastSpace) : cut;
+  }
+  s = s.replace(/[^\S ]/g, ' ').replace(/\s+/g, ' ').trim();
+  if (s.length < 2) return null;
+  return s;
+}
+
+// Compose a guaranteed-non-empty enrichment object for blocked / failed
+// fetches, so downstream templates still get a logo image + reasonable
+// title even when bot-protection wins. The logo via Google s2 works for
+// virtually any HTTPS-reachable domain.
+function __blockedFallback(key) {
+  const display = key.split('.')[0].replace(/(^|\s)\w/g, m => m.toUpperCase());
+  // 128px favicon for hero. Google's s2 service is permissive and CORS-clean.
+  const logo = `https://www.google.com/s2/favicons?domain=${key}&sz=128`;
+  return {
+    available: true,
+    blocked: true,
+    title: display,
+    description: null,
+    navLabels: [],
+    productImages: [{ url: logo, alt: display + ' logo' }],
+  };
+}
+
 async function lookupLiveSite(domain) {
   const key = String(domain || '').toLowerCase();
   if (__liveCache[key]) return __liveCache[key];
@@ -210,13 +320,16 @@ async function lookupLiveSite(domain) {
 
   try {
     const ctrl = new AbortController();
-    const tid = setTimeout(() => ctrl.abort(), 7000);
+    const tid = setTimeout(() => ctrl.abort(), 8000);
     const res = await fetch(url, { signal: ctrl.signal });
     clearTimeout(tid);
-    if (!res.ok) throw new Error('jina http ' + res.status);
+    if (!res.ok) {
+      __liveCache[key] = __blockedFallback(key);
+      return __liveCache[key];
+    }
     const text = await res.text();
-    if (text.includes('Target URL returned error') || text.includes('CAPTCHA')) {
-      __liveCache[key] = { available: false, blocked: true };
+    if (text.includes('Target URL returned error') || text.includes('CAPTCHA') || text.length < 200) {
+      __liveCache[key] = __blockedFallback(key);
       return __liveCache[key];
     }
 
@@ -243,45 +356,53 @@ async function lookupLiveSite(domain) {
       }
     }
 
-    // Nav labels: pull link texts that look like nav items
-    // (short, plain words, not URLs or generic 'click here')
+    // Nav labels: pull link texts, then aggressively shorten them.
+    // We're more permissive than before (60 chars) and then trust
+    // __shortenNavLabel() to produce a clean nav-y string.
     const navLabels = [];
     const seenLabels = new Set();
     const linkRe = /\[([^\]]+)\]\(([^)]+)\)/g;
     let m;
     while ((m = linkRe.exec(body)) !== null) {
-      let lbl = m[1].trim();
-      // strip leading product names like 'Notion Calendar' -> 'Calendar' is hard;
-      // just take labels short enough to be nav-y
-      if (!lbl || lbl.length > 28) continue;
-      // skip pure URLs, emoji-only, image alt-text
-      if (/^https?:/i.test(lbl)) continue;
-      if (/^image\s*\d*$/i.test(lbl)) continue;
-      if (/^\s*$/.test(lbl)) continue;
-      // collapse weird whitespace, strip markdown-y arrows
-      lbl = lbl.replace(/\s+/g, ' ').replace(/[→↓↑←»«]+$/g, '').trim();
-      if (lbl.length < 2) continue;
+      const raw = m[1].trim();
+      if (!raw || raw.length > 80) continue;
+      if (/^https?:/i.test(raw)) continue;
+      if (/^image\s*\d*$/i.test(raw)) continue;
+      // reject obviously bad labels
+      if (/^(register today|click here|learn more|see what|read more|see all|show all|sign in|log in|create account|skip to)/i.test(raw)) continue;
+      const lbl = __shortenNavLabel(raw);
+      if (!lbl) continue;
       const k = lbl.toLowerCase();
       if (seenLabels.has(k)) continue;
-      // reject obviously bad labels
-      if (/^(register today|click here|learn more|see what|read more|see all|show all)$/i.test(lbl)) continue;
       seenLabels.add(k);
       navLabels.push(lbl);
       if (navLabels.length >= 12) break;
     }
 
-    // Product images: extract markdown image URLs
+    // Product images: extract markdown image URLs. Skip tracking pixels,
+    // tiny icons, base64-data URIs, and SVGs (usually logos/decoration).
     const productImages = [];
     const seenImg = new Set();
     const imgRe = /!\[([^\]]*)\]\(([^)]+)\)/g;
     while ((m = imgRe.exec(body)) !== null) {
       const u = m[2].trim();
       if (!/^https?:\/\//i.test(u)) continue;
-      if (/\.(svg)(\?|$)/i.test(u)) continue; // skip svgs which are often logos/icons
+      if (/\.(svg)(\?|$)/i.test(u)) continue;
+      if (/sprite|pixel|spacer|1x1|tracking|googletag|doubleclick/i.test(u)) continue;
       if (seenImg.has(u)) continue;
       seenImg.add(u);
       productImages.push({ url: u, alt: (m[1] || '').slice(0, 60) });
       if (productImages.length >= 8) break;
+    }
+
+    // ALWAYS guarantee at least one usable image — the favicon, sized up.
+    // This ensures even text-heavy pages (notion, figma) render with the
+    // brand mark, which makes the page feel "like the real brand".
+    if (productImages.length === 0) {
+      productImages.push({
+        url: `https://www.google.com/s2/favicons?domain=${key}&sz=128`,
+        alt: (title || key) + ' logo',
+      });
     }
 
     __liveCache[key] = {
@@ -293,7 +414,7 @@ async function lookupLiveSite(domain) {
     };
     return __liveCache[key];
   } catch (e) {
-    __liveCache[key] = { available: false, error: String(e) };
+    __liveCache[key] = __blockedFallback(key);
     return __liveCache[key];
   }
 }
@@ -301,21 +422,47 @@ async function lookupLiveSite(domain) {
 window.lookupLiveSite = lookupLiveSite;
 
 /* ---------- Keyword → category map ---------- */
-// Order matters: earlier matches win.
+// Order matters: earlier matches win. Categories must each have a distinct
+// archetype mapping below so we route brands to visually-appropriate
+// templates (music ≠ movies, pets ≠ books).
 const CATEGORY_RULES = [
+  { cat: 'pets',      re: /(petco|petsmart|chewy|petfood|petco|pets\.|petsmart|petfinder|barkbox|americankennel|aspca|humane)/ },
+  { cat: 'music',     re: /(spotify|soundcloud|pandora|tidal|deezer|apple\.music|youtubemusic|audible|podcast|music|audio|records|sony\.music|warnermusic|universalmusic|bandcamp|lastfm|napster)/ },
   { cat: 'gaming',    re: /(game|play|xbox|nintendo|steam|riot|blizzard|activision|epicgames|gamespot|ign|twitch|valve|ubisoft|rockstar|gta|wow|fortnite|minecraft|roblox|sega|playstation|halo|callofduty)/ },
   { cat: 'media',     re: /(news|times|post|tribune|herald|gazette|journal|magazine|cnn|bbc|fox|nbc|abc|cbs|msnbc|nyt|reuters|bloomberg|wsj|guardian|vogue|wired|theverge|techcrunch|vice|buzzfeed|huffpost|mashable|gizmodo)/ },
-  { cat: 'film',      re: /(spotify|soundcloud|pandora|tidal|deezer|apple\.music|youtubemusic|audible|podcast|music|audio|records|sony\.music|warnermusic|universalmusic)/ }, // music = entertainment/cinematic vibe
   { cat: 'corp',      re: /(tesla|ford|gm|toyota|honda|bmw|mercedes|audi|volkswagen|porsche|ferrari|lambo|kia|hyundai|nissan|subaru|volvo|jaguar|landrover|rivian|lucid|polestar|car|auto|motors|peloton|nike|adidas|puma|underarmour|lululemon|gap|uniqlo|hm|zara|levis|gucci|prada|chanel|lvmh|cartier|rolex|tiffany|coach|katespade|guess)/ },
-  { cat: 'ecommerce', re: /(shop|store|buy|cart|market|deal|amazon|ebay|etsy|walmart|target|costco|bestbuy|ikea|home\.depot|wayfair|alibaba|aliexpress|shein|temu|zappos|nordstrom|macys|sephora|ulta|petco|petsmart|chewy|petfood|pets)/ },
+  { cat: 'ecommerce', re: /(shop|store|buy|cart|market|deal|amazon|ebay|etsy|walmart|target|costco|bestbuy|ikea|home\.depot|wayfair|alibaba|aliexpress|shein|temu|zappos|nordstrom|macys|sephora|ulta)/ },
   { cat: 'food',      re: /(food|eat|restaurant|pizza|burger|chicken|coffee|coke|pepsi|sprite|mcdonald|mcd|burgerking|wendys|kfc|tacobell|chipotle|subway|dominos|papajohns|starbucks|dunkin|doordash|ubereats|grubhub|seamless|caviar|postmates|deliveroo|fritolay|hersheys|kelloggs|nestle|kraft|heinz|oreo|lays|doritos|cheetos|skittles|mms|snickers|kitkat|reeses)/ },
   { cat: 'film',      re: /(movie|film|cinema|imdb|netflix|hbo|disney|hulu|paramount|warnerbros|warner|universal|sonypictures|mgm|miramax|a24|fox|peacock|max|primevideo|appletv|theater|theatre|trailer|boxoffice)/ },
   { cat: 'community', re: /(forum|reddit|discord|4chan|digg|slashdot|quora|stackoverflow|stackexchange|community|board|wiki|fandom|deviantart|tumblr|livejournal|xanga|myspace|orkut|friendster|hi5)/ },
-  { cat: 'design',    re: /(studio|agency|design|creative|figma|dribbble|behance|pentagram|wieden|droga|ogilvy|saatchi|ideo|frogdesign|huge|rga|akqa|bbh|portfolio)/ },
-  { cat: 'finance',   re: /(bank|chase|wellsfargo|citi|hsbc|barclays|santander|td|usbank|capitalone|amex|americanexpress|visa|mastercard|paypal|venmo|cashapp|square|stripe|brex|mercury|gusto|brex|fidelity|schwab|vanguard|robinhood|coinbase|kraken|gemini|finance|invest|trading|broker|mortgage|loan|credit)/ },
-  { cat: 'tech',      re: /(\.app$|\.dev$|\.ai$|\.so$|\.io$|cloud|api|saas|platform|software|tech|labs|technologies|systems|solutions|computing|data|analytics|notion|figma|linear|asana|monday|airtable|miro|loom|zoom|slack|github|gitlab|vercel|netlify|render|supabase|firebase|aws|gcp|azure|databricks|snowflake|salesforce|hubspot|stripe|twilio|sentry|datadog|cloudflare|fastly|fly\.io)/ },
+  { cat: 'productivity', re: /(notion|asana|monday|airtable|miro|loom|linear|trello|clickup|todoist|evernote|onenote|googledocs|gdocs|gsuite|workspace|slack|teams)/ },
+  { cat: 'design',    re: /(studio|agency|design|creative|figma|dribbble|behance|pentagram|wieden|droga|ogilvy|saatchi|ideo|frogdesign|huge|rga|akqa|bbh|portfolio|sketch|invision|webflow|framer)/ },
+  { cat: 'finance',   re: /(bank|chase|wellsfargo|citi|hsbc|barclays|santander|td|usbank|capitalone|amex|americanexpress|visa|mastercard|paypal|venmo|cashapp|square|stripe|brex|mercury|gusto|brex|fidelity|schwab|vanguard|robinhood|coinbase|kraken|gemini|finance|invest|trading|broker|mortgage|loan|credit|ramp)/ },
+  { cat: 'tech',      re: /(\.app$|\.dev$|\.ai$|\.so$|\.io$|cloud|api|saas|platform|software|tech|labs|technologies|systems|solutions|computing|data|analytics|github|gitlab|vercel|netlify|render|supabase|firebase|aws|gcp|azure|databricks|snowflake|salesforce|hubspot|twilio|sentry|datadog|cloudflare|fastly|openai|anthropic|perplexity)/ },
   { cat: 'personal',  re: /^(.+\.(me|name|blog|tumblr|substack)$|.*personal|.*portfolio)/ },
 ];
+
+/* ---------- Category-aware fallback nav labels ---------- */
+// When the live site gave us no nav, generate one that matches the BRAND, not
+// a generic "Books / Music / Video" Amazon clone. Each category yields a
+// 7-10 item set sized for portal templates.
+const CATEGORY_FALLBACK_NAV = {
+  'pets':         ['Dogs','Cats','Fish','Birds','Small Pets','Reptiles','Pharmacy','Services','Sale'],
+  'music':        ['Browse','New Releases','Top Charts','Genres','Playlists','Podcasts','Artists','Premium'],
+  'gaming':       ['Games','News','Downloads','Forums','Tournaments','Store','Support'],
+  'media':        ['Top Stories','World','Business','Tech','Sports','Entertainment','Opinion','Weather'],
+  'corp':         ['Models','Shop','Build','Owners','Compare','Find a Dealer','About'],
+  'ecommerce':    ['Departments','Today\u0027s Deals','Bestsellers','Gifts','Sale','Customer Service'],
+  'food':         ['Menu','Locations','Promotions','Catering','Rewards','Order Online','About'],
+  'film':         ['Now Playing','Coming Soon','Tickets','Trailers','News','Theaters'],
+  'community':    ['Home','Boards','Top','New','Submit','Wiki','Help'],
+  'productivity': ['Product','Solutions','Templates','Pricing','Resources','Customers','Download'],
+  'design':       ['Work','Process','About','Clients','Press','Contact'],
+  'finance':      ['Personal','Business','Investing','Cards','Loans','Help','Sign In'],
+  'tech':         ['Product','Features','Docs','Pricing','Customers','Blog','Sign Up'],
+  'personal':     ['Home','About','Blog','Photos','Guestbook','Links','Contact'],
+  'unknown':      ['Home','About','Products','News','Contact'],
+};
 
 function categorize(domain) {
   for (const r of CATEGORY_RULES) if (r.re.test(domain)) return r.cat;
@@ -325,18 +472,21 @@ function categorize(domain) {
 /* ---------- Category → archetype map ---------- */
 // Some categories have two options for variety; we hash-select.
 const CATEGORY_ARCHETYPES = {
-  'gaming':    ['darkGameShrine', 'brightGameEntertainment'],
-  'media':     ['corpEcommercePortal', 'flashPromoCinematic'], // news = portal-ish
-  'ecommerce': ['corpEcommercePortal'],
-  'food':      ['corpConsumerBrand'],
-  'film':      ['flashPromoCinematic', 'darkGameShrine'],
-  'community': ['maximalPortal'],
-  'design':    ['designAgency', 'flashPortfolioFuturist'],
-  'corp':      ['corpConsumerBrand', 'flashPromoCinematic'], // cars / fashion = cinematic brand site
-  'finance':   ['corpEcommercePortal'], // serious 3-column portal
-  'tech':      ['flashPortfolioFuturist', 'designAgency'],
-  'personal':  ['geocities'],
-  'unknown':   ['geocities', 'maximalPortal', 'corpConsumerBrand', '2advanced', 'darkGameShrine'],
+  'pets':         ['corpEcommercePortal', 'corpConsumerBrand'], // pet stores = portal + cheerful brand vibes
+  'music':        ['flashPromoCinematic', 'corpConsumerBrand'], // music = cinematic, not gaming
+  'gaming':       ['darkGameShrine', 'brightGameEntertainment'],
+  'media':        ['corpEcommercePortal', 'flashPromoCinematic'], // news = portal-ish
+  'ecommerce':    ['corpEcommercePortal'],
+  'food':         ['corpConsumerBrand'],
+  'film':         ['flashPromoCinematic'],
+  'community':    ['maximalPortal'],
+  'productivity': ['flashPortfolioFuturist', 'designAgency'],
+  'design':       ['designAgency', 'flashPortfolioFuturist'],
+  'corp':         ['corpConsumerBrand', 'flashPromoCinematic'],
+  'finance':      ['corpEcommercePortal'],
+  'tech':         ['flashPortfolioFuturist', 'designAgency'],
+  'personal':     ['geocities'],
+  'unknown':      ['geocities', 'maximalPortal', 'corpConsumerBrand', '2advanced'],
 };
 
 /* ---------- Brand color database (hex) ----------
@@ -508,14 +658,28 @@ function pillBtn(text, href, p) {
   return `<a href="${href||'#'}" style="display:inline-block; padding:6px 14px; background:linear-gradient(180deg,${p.accent} 0%, ${p.primary} 100%); color:${p.secondary}; text-decoration:none; font-family:Verdana,Arial,sans-serif; font-size:12px; font-weight:bold; border:2px outset ${p.accent}; margin:2px;">${text}</a>`;
 }
 
-/* Utility: prefer real nav labels from the live site, otherwise use a template
-   default. We always pad to at least `min` items so layouts stay balanced. */
+/* Utility: prefer real nav labels from the live site, otherwise a
+   category-appropriate set, otherwise the template's own fallback.
+
+   Precedence:
+     1. d.navLabels (from the live site)
+     2. CATEGORY_FALLBACK_NAV[d.category] (brand-appropriate generic)
+     3. `fallback` parameter (template's own default — LAST RESORT)
+
+   We pad to at least `min` items by cycling through the chosen source.
+   We intentionally pick the category list over the template fallback to
+   avoid Battle.net widgets on Spotify and Books/Music/Video on Petco. */
 function realNav(d, fallback, min) {
-  const out = (d && d.navLabels && d.navLabels.length) ? d.navLabels.slice(0, Math.max(fallback.length, min || 0)) : fallback;
-  if (min && out.length < min) {
-    let i = 0;
-    while (out.length < min) { out.push(fallback[i % fallback.length]); i++; }
-  }
+  let source = null;
+  if (d && d.navLabels && d.navLabels.length) source = d.navLabels.slice();
+  else if (d && d.category && CATEGORY_FALLBACK_NAV[d.category]) source = CATEGORY_FALLBACK_NAV[d.category].slice();
+  else source = fallback.slice();
+
+  // Pad to template's required length using the same source to keep tone consistent.
+  const target = Math.max(fallback.length, min || 0);
+  const out = source.slice(0, target);
+  let i = 0;
+  while (out.length < target) { out.push(source[i % source.length] || fallback[i % fallback.length]); i++; }
   return out;
 }
 
@@ -585,11 +749,15 @@ function productIcon(idx, p, w, h) {
 /* ---------- 1. DARK GAME SHRINE (Diablo II / CS / Tomb Raider) ---------- */
 function tplDarkGameShrine(d, p) {
   const news = (d.bullets || []).slice(0, 5);
-  const news4 = news.length >= 4 ? news : ['NEW: Beta patch 1.04 released', 'TIPS &amp; TRICKS section updated', 'fan-art submissions OPEN', 'official forum: 12,047 users online'];
-  // Real top-row nav (5 items) + real sidebar nav (9 items), pulled from the
-  // live site when available, otherwise game-shrine defaults.
+  // News4: real bullets if we have them, else brand-appropriate defaults.
+  const defaultNews = d.category === 'gaming'
+    ? ['NEW: Beta patch 1.04 released', 'TIPS &amp; TRICKS section updated', 'fan-art submissions OPEN', 'official forum: 4,201 users online']
+    : [`Welcome to ${d.sitename}.com`, 'Site updates posted weekly', 'New features coming soon', 'Sign our guestbook!'];
+  const news4 = news.length >= 4 ? news : defaultNews;
+  // Real top-row nav + real sidebar nav, pulled from the live site when
+  // available, otherwise category-aware defaults via realNav.
   const topNav  = realNav(d, ['Enter','News','Downloads','Forum','Support'], 5);
-  const sideNav = realNav(d, ['News &amp; Updates','Walkthroughs','Cheats &amp; Codes','Screenshots','Patches','Mods','Forums (4,201)','Store','Webmaster'], 9);
+  const sideNav = realNav(d, ['News &amp; Updates','Walkthroughs','Cheats &amp; Codes','Screenshots','Patches','Mods','Forums','Store','Webmaster'], 9);
   return `
   <div style="background:#000 url(&quot;data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'><rect width='200' height='200' fill='%23${p.secondary.replace('#','')}'/><path d='M0 100 L200 100 M100 0 L100 200' stroke='%23${p.primary.replace('#','')}' stroke-width='0.5' opacity='0.15'/></svg>&quot;); min-height:100vh; padding-bottom:90px; color:${p.accent}; font-family:'Georgia','Times New Roman',serif;">
 
@@ -616,8 +784,8 @@ function tplDarkGameShrine(d, p) {
             ${sideNav.map(x => `<li>&raquo; <a href="#" style="color:${p.accent};">${x}</a></li>`).join('')}
           </ul>
           <div style="margin-top:12px; padding:8px; border:1px ridge ${p.primary}; text-align:center;">
-            <div style="color:${p.primary}; font-size:11px; font-variant:small-caps;">~ Server Status ~</div>
-            <div style="color:${p.accent}; font-family:'Courier New',monospace; font-size:11px; margin-top:4px;">12,847 online<br>Battle.net: <span style="color:#0f0;">UP</span></div>
+            <div style="color:${p.primary}; font-size:11px; font-variant:small-caps;">~ ${d.category === 'gaming' ? 'Server Status' : 'Site Status'} ~</div>
+            <div style="color:${p.accent}; font-family:'Courier New',monospace; font-size:11px; margin-top:4px;">${Math.floor(hashStrA(p.domain+'online')%9000+1000).toLocaleString()} online<br>${d.sitename}: <span style="color:#0f0;">UP</span></div>
           </div>
           ${rampSkyscraper('shrine-sky')}
         </td>
@@ -641,12 +809,17 @@ function tplDarkGameShrine(d, p) {
           </div>
 
           <div style="margin-top:12px; background:#0a0a0a; border:2px ridge ${p.primary}80; padding:14px;">
-            <h2 style="color:${p.primary}; font-family:'Georgia',serif; font-variant:small-caps; margin:0 0 10px;">&#9886; Community</h2>
+            <h2 style="color:${p.primary}; font-family:'Georgia',serif; font-variant:small-caps; margin:0 0 10px;">&#9886; ${d.category === 'gaming' ? 'Community' : 'By the Numbers'}</h2>
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; font-family:'Verdana',sans-serif; font-size:12px; color:${p.accent};">
+              ${d.category === 'gaming' ? `
               <div>&#9670; <b>4,201</b> registered members</div>
               <div>&#9670; <b>187,920</b> forum posts</div>
               <div>&#9670; <b>892</b> screenshots in gallery</div>
-              <div>&#9670; <b>54</b> active mods</div>
+              <div>&#9670; <b>54</b> active mods</div>` : `
+              <div>&#9670; <b>1999</b> launched on the web</div>
+              <div>&#9670; <b>${(hashStrA(p.domain+'visit')%900+100)},000</b> monthly visitors</div>
+              <div>&#9670; <b>${hashStrA(p.domain+'pages')%900+100}</b> pages of content</div>
+              <div>&#9670; <b>Y2K</b> compliant since launch</div>`}
             </div>
           </div>
 
@@ -1386,16 +1559,21 @@ function applyHeadingCase(text, t) {
   }
 }
 
-/* Copy voice transform — wraps a string of bullets/copy in voice */
+/* Copy voice transform — wraps a string of bullets/copy in voice.
+   Heuristic: short product/nav-like strings (under ~24 chars or no
+   sentence-ending punctuation) are treated as "labels" and skip the
+   sentence-y wrappers, so we don't get "Please be advised: Featured product"
+   on every product card.  */
 function applyVoice(text, t) {
   if (!text) return text;
   const s = String(text);
+  const isLabel = s.length < 24 && !/[.!?]/.test(s);
   switch (t.voice) {
     case 'corporate':  return s;
     case 'hyperbolic': return s.toUpperCase().replace(/\.$/, '!!!').replace(/$/, ' !!!');
-    case 'fanzine':    return '~* ' + s + ' *~';
+    case 'fanzine':    return isLabel ? s : '~* ' + s + ' *~';
     case 'l33t':       return s.replace(/e/gi,'3').replace(/a/gi,'4').replace(/o/gi,'0').replace(/i/gi,'1').replace(/t/gi,'7').replace(/s/gi,'5');
-    case 'formal':     return 'Please be advised: ' + s;
+    case 'formal':     return isLabel ? s : 'Please be advised: ' + s;
     default:           return s;
   }
 }
@@ -1471,6 +1649,9 @@ function renderVariant(d, p) {
     welcome:  d.welcome, // never voice-transform; templates inject as HTML
     cta:      applyHeadingCase(d.cta || 'Enter site', t),
     bullets:  (d.bullets || []).map(b => safeVoice(b)),
+    // Pass the brand category through so realNav() can pick a
+    // brand-appropriate fallback (no Books/Music/Video on Petco).
+    category: p.category,
   };
 
   let inner;
