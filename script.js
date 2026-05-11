@@ -461,13 +461,23 @@ function routeTo(domain, opts) {
   bar.style.width = '0%';
   document.getElementById('dialing').classList.add('show');
 
+  const kb = 180 + Math.floor(Math.random()*220);
+  const hits = (typeof hashStrA === 'function' ? hashStrA(domain+'dial') : domain.length*977) % 90000 + 1000;
   const stages = [
-    { pct: 12,  msg: 'Negotiating handshake at 56,600 bps...', act: 'Dialing...' },
-    { pct: 28,  msg: 'Authenticating user@aol.com...',           act: 'Connecting...' },
-    { pct: 46,  msg: 'You&apos;ve got mail!!',                  act: 'Connecting...' },
-    { pct: 64,  msg: 'Resolving DNS for ' + domain + '...',      act: 'Loading...' },
-    { pct: 82,  msg: 'Downloading site ('+ (180 + Math.floor(Math.random()*220)) +' KB)...', act: 'Loading...' },
-    { pct: 100, msg: 'Done.',                                    act: 'Loading...' },
+    { pct: 6,   msg: 'Negotiating handshake at 56,600 bps...',            act: 'Dialing...' },
+    { pct: 13,  msg: 'Authenticating user@aol.com...',                    act: 'Connecting...' },
+    { pct: 21,  msg: 'You&apos;ve got mail!!',                            act: 'Connecting...' },
+    { pct: 29,  msg: 'Resolving DNS for ' + domain + ' at AOL...',         act: 'Loading...' },
+    { pct: 37,  msg: 'Phoning your ISP, please hold...',                  act: 'Loading...' },
+    { pct: 45,  msg: 'Reticulating splines...',                            act: 'Loading...' },
+    { pct: 53,  msg: 'Selecting era-appropriate font pairing...',          act: 'Loading...' },
+    { pct: 61,  msg: 'Extracting brand colors from ' + domain + '...',     act: 'Loading...' },
+    { pct: 69,  msg: 'Picking archetype (one of nine ancient layouts)...', act: 'Loading...' },
+    { pct: 77,  msg: 'Loading marquee.gif... 47/88 KB',                    act: 'Loading...' },
+    { pct: 85,  msg: 'Spinning up hit counter ('+ hits +' visitors)...',   act: 'Loading...' },
+    { pct: 92,  msg: 'Downloading site ('+ kb +' KB) over 56k...',         act: 'Loading...' },
+    { pct: 98,  msg: 'Buffering blink tags &amp; sparkle gifs...',         act: 'Loading...' },
+    { pct: 100, msg: 'Done. Welcome to the year 2000.',                    act: 'Loading...' },
   ];
   let i = 0;
   const tick = () => {
@@ -482,7 +492,7 @@ function routeTo(domain, opts) {
     bar.style.width = s.pct + '%';
     document.getElementById('dial-status').innerHTML = s.msg;
     document.getElementById('dial-action').textContent = s.act;
-    setTimeout(tick, 360 + Math.random() * 220);
+    setTimeout(tick, 600 + Math.random() * 280);
   };
   tick();
 }
@@ -526,8 +536,8 @@ function renderSite(domain) {
     template = CURATED[domain].template;
     data = CURATED[domain].data;
   } else {
-    template = TEMPLATE_NAMES[hashStr(domain) % TEMPLATE_NAMES.length];
     data = genericSiteData(domain);
+    template = 'variant'; // uncurated -> archetype + variant traits
   }
 
   // For unknown sites, attempt live-fetch enrichment.
@@ -536,14 +546,26 @@ function renderSite(domain) {
   }
 
   let html = '';
-  if (template === 'google2000')      html = tplGoogle2000();
+  if (template === 'google2000')       html = tplGoogle2000();
   else if (template === 'nytimes2000') html = tplNYTimes2000();
   else if (template === 'apple2000')   html = tplApple2000();
   else if (template === 'openai2000')  html = tplOpenAI2000();
   else if (template === 'linear2000')  html = tplLinear2000();
-  else if (template === 'geocities')   html = tplGeocities(data);
-  else if (template === '2advanced')   html = tpl2Advanced(data);
-  else if (template === 'yahoo')       html = tplYahoo(data);
+  else if (template === '2advanced')   html = tpl2Advanced(data); // stripe.com curated
+  else if (template === 'variant') {
+    // Uncurated: pick archetype via brandProfile, then render with variant traits.
+    try {
+      const profile = window.brandProfile ? window.brandProfile(domain) : null;
+      if (profile && window.renderVariant) {
+        html = window.renderVariant(data, profile);
+      } else {
+        html = tplGeocities(data);
+      }
+    } catch (e) {
+      console.error('variant render failed', e);
+      html = tplGeocities(data);
+    }
+  }
   else                                 html = tplGeocities(data);
 
   render.innerHTML = html;
