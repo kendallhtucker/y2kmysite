@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Y2KMYSITE.COM // Redirecting...</title>
+<meta name="robots" content="noindex">
+<!--
+  SPA-on-GitHub-Pages redirect trick:
+  GH Pages serves this page for any unknown path under /y2kmysite/.
+  We rewrite that path into a ?p=/segment query and bounce to index.html,
+  which then reads ?p, restores the URL via history.replaceState, and
+  routes to the right template.
+  Based on the well-known rafgraph/spa-github-pages pattern.
+-->
+<script>
+(function () {
+  // Skip asset 404s — don't redirect missing images/scripts/etc.
+  if (/\.(svg|js|css|png|jpe?g|gif|ico|json|map|webp|woff2?|ttf|otf)$/i.test(location.pathname)) {
+    return;
+  }
+  var segments = location.pathname.split('/').filter(Boolean);
+  // On github.io, the first segment is the repo name ("y2kmysite").
+  // On a custom domain, there is no repo prefix.
+  var hasRepo = location.hostname.endsWith('.github.io');
+  var repo = hasRepo ? (segments.shift() || '') : '';
+  var rest = segments.join('/');
+  var base = repo ? '/' + repo : '';
+  var p    = rest ? '/' + rest : '';
+  var search = location.search;
+  var pParam = 'p=' + encodeURIComponent(p);
+  var newSearch = search ? (search + '&' + pParam) : ('?' + pParam);
+  var target = base + '/' + newSearch + location.hash;
+  location.replace(target);
+})();
+</script>
+</head>
+<body style="font-family:Arial,sans-serif; background:#008080; color:#fff; padding:24px;">
+<p>Loading Y2KMYSITE&hellip; if you are not redirected, <a href="/" style="color:#ffff00;">click here</a>.</p>
+</body>
+</html>

@@ -343,6 +343,12 @@ function showIE5() {
 
 function restartFlow() {
   showIE5();
+  // Drop the path segment so we're back at the site root.
+  try {
+    if (window.__y2kBasePath !== undefined) {
+      history.pushState({ y2k: true, view: 'home' }, '', window.__y2kBasePath || '/');
+    }
+  } catch (e) { /* history may be unavailable in some hosts */ }
 }
 
 function goY2K() {
@@ -359,6 +365,81 @@ function quickGo(url) {
   routeTo(normalizeURL(url));
 }
 
+/* ------------------------------------------------------------------
+   SHORT-PATH ROUTING
+   So y2kmysite.com/google opens the Google template directly,
+   /nytimes opens NYTimes, /petco generates petco.com, etc.
+
+   We honor whatever the current host's "base" path is (so this works
+   on github.io/y2kmysite/, on the pplx proxy, and on a custom domain).
+------------------------------------------------------------------ */
+
+// Map short segment -> full domain (for the curated set).
+// Anything else is treated as <segment>.com (or used as-is if it has a dot).
+const SHORT_PATHS = {
+  'google':  'google.com',
+  'nytimes': 'nytimes.com',
+  'apple':   'apple.com',
+  'stripe':  'stripe.com',
+  'openai':  'openai.com',
+  'linear':  'linear.app',
+  'ramp':    'ramp.com',
+};
+
+// Detect the "site base path" — everything before our routing segment.
+// On github.io it's "/y2kmysite"; on pplx proxy it's the long token path; on
+// a custom domain it's "". We anchor off the pathname of index.html.
+function detectBasePath() {
+  const p = location.pathname;
+  // Strip trailing index.html if present.
+  let base = p.replace(/\/index\.html?$/i, '');
+  // If it ends in a slash, drop it.
+  base = base.replace(/\/$/, '');
+  return base; // may be "" for custom domain root
+}
+
+// Pull the routing segment after the base path.
+// Returns null if there's nothing to route to.
+function extractRouteSegment() {
+  const base = window.__y2kBasePath || '';
+  let p = location.pathname;
+  if (base && p.indexOf(base) === 0) p = p.slice(base.length);
+  p = p.replace(/^\/+/, '').replace(/\/+$/, '');
+  // Also support hash-style routing (#/google) as a universal fallback.
+  if (!p && location.hash) {
+    p = location.hash.replace(/^#\/?/, '').replace(/\/+$/, '');
+  }
+  if (!p) return null;
+  // Only take the first segment; ignore anything past it.
+  return p.split('/')[0].toLowerCase();
+}
+
+// Convert a short path segment to a full domain.
+function segmentToDomain(seg) {
+  if (!seg) return null;
+  // Don't try to route on file extensions (e.g. "favicon.svg", "script.js")
+  if (/\.(svg|js|css|png|jpe?g|gif|ico|html?|json|map|webp)$/i.test(seg)) return null;
+  if (SHORT_PATHS[seg]) return SHORT_PATHS[seg];
+  return normalizeURL(seg); // "petco" -> "petco.com"; "linear.app" -> "linear.app"
+}
+
+// Push the short path into the URL bar so it's shareable.
+function pushDomainPath(domain) {
+  try {
+    // Find the short slug for known domains, else use the bare host without TLD.
+    let slug = null;
+    for (const [k, v] of Object.entries(SHORT_PATHS)) {
+      if (v === domain) { slug = k; break; }
+    }
+    if (!slug) slug = domain.replace(/\.[a-z]{2,}$/, '');
+    const base = window.__y2kBasePath || '';
+    const newUrl = (base || '') + '/' + slug;
+    history.pushState({ y2k: true, view: 'site', domain }, '', newUrl);
+  } catch (e) { /* hosts that block pushState fall back to hash */
+    try { location.hash = '#/' + (domain.split('.')[0]); } catch (_) {}
+  }
+}
+
 function normalizeURL(u) {
   let url = u.toLowerCase().trim();
   url = url.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '');
@@ -368,7 +449,10 @@ function normalizeURL(u) {
   return url;
 }
 
-function routeTo(domain) {
+function routeTo(domain, opts) {
+  opts = opts || {};
+  // Reflect the route in the URL bar unless we're already responding to a popstate.
+  if (!opts.skipPush) pushDomainPath(domain);
   // show dialing modal
   document.getElementById('dial-target').textContent = 'http://www.' + domain;
   document.getElementById('dial-action').textContent = 'Dialing...';
@@ -1024,6 +1108,41 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   // Load homepage hit counter (read-only — increment happens on Y2K-ify)
   loadHomeCounter();
+
+  // --- Short-path deep-linking ---
+  window.__y2kBasePath = detectBasePath();
+
+  // GitHub Pages 404 redirect trick: if the user typed /y2kmysite/google,
+  // the 404 page reloads index.html with ?p=/google. Unwrap that here.
+  try {
+    const qs = new URLSearchParams(location.search);
+    if (qs.get('p')) {
+      const restored = (window.__y2kBasePath || '') + qs.get('p');
+      history.replaceState(null, '', restored);
+    }
+  } catch (e) {}
+
+  const seg = extractRouteSegment();
+  const domain = segmentToDomain(seg);
+  if (domain) {
+    // Skip the IE5 landing and go straight to the site.
+    // routeTo will pushState; we don't want a duplicate entry, so replaceState first.
+    try { history.replaceState({ y2k: true, view: 'home' }, '', (window.__y2kBasePath || '/')); } catch (e) {}
+    routeTo(domain);
+  }
+
+  // Back/forward button support.
+  window.addEventListener('popstate', () => {
+    const seg2 = extractRouteSegment();
+    const d2 = segmentToDomain(seg2);
+    if (d2) {
+      // Navigate to that site without pushing another history entry.
+      routeTo(d2, { skipPush: true });
+    } else {
+      // Back to homepage.
+      showIE5();
+    }
+  });
 });
 
 // Read the live master count without incrementing. Used on homepage load.
