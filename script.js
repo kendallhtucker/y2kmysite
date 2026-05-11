@@ -1402,8 +1402,8 @@ function tplApple2000() {
       </tr></table>
 
       <!-- search + footer links -->
-      <form action="https://www.apple.com/us/search/" method="get" target="_blank" style="margin-top:30px; padding-top:14px; border-top:1px solid #ccc; font-family:'Lucida Grande',Arial,sans-serif; font-size:11px; color:#666; display:flex; gap:14px; flex-wrap:wrap; align-items:center;">
-        <input type="text" name="src" placeholder="Search" style="font-family:Arial; font-size:11px; padding:2px 4px; border:1px solid #888; width:180px;">
+      <form onsubmit="var q=this.q.value.trim();if(q){var a=document.createElement('a');a.href='https://www.apple.com/us/search/'+encodeURIComponent(q);a.target='_blank';a.rel='noopener';document.body.appendChild(a);a.click();a.remove();}return false;" style="margin-top:30px; padding-top:14px; border-top:1px solid #ccc; font-family:'Lucida Grande',Arial,sans-serif; font-size:11px; color:#666; display:flex; gap:14px; flex-wrap:wrap; align-items:center;">
+        <input type="text" name="q" placeholder="Search" style="font-family:Arial; font-size:11px; padding:2px 4px; border:1px solid #888; width:180px;">
         <button type="submit" style="font-family:Arial; font-size:11px; padding:1px 10px; border:1px solid #888; background:#ededed; cursor:pointer;">Search</button>
         <span><a href="https://www.apple.com/sitemap/" target="_blank" style="color:#003399;">Site Map</a> | <a href="https://www.apple.com/us/search/search+tips" target="_blank" style="color:#003399;">Search Tips</a> | <a href="https://www.apple.com/shop/" target="_blank" style="color:#003399;">Options</a> | <a href="https://www.apple.com/sitemap/" target="_blank" style="color:#003399;">Keywords</a></span>
       </form>
