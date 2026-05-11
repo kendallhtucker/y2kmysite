@@ -5,6 +5,174 @@
    Loaded BEFORE script.js so all of its exports are available.
    ============================================================ */
 
+/* ============================================================
+   WAYBACK MACHINE INTEGRATION
+   If a real year-2000 snapshot exists, we'd rather show that
+   than a generated take. Query the availability API first.
+   ============================================================ */
+
+// Per-session cache so re-rendering the same domain doesn't refetch.
+const __waybackCache = {};
+
+// Look up a Y2K-era Wayback snapshot for this domain.
+// Returns { available:true, iframeUrl, viewUrl, timestamp, displayDate } if a
+// snapshot exists in 1999-2001, otherwise { available:false }.
+//
+// Strategy: hit the CDX API (more reliable than the availability endpoint)
+// for any snapshots in [1999, 2001], then pick the one closest to mid-2000.
+async function lookupWayback(domain) {
+  const key = String(domain || '').toLowerCase();
+  if (__waybackCache[key]) return __waybackCache[key];
+
+  // CDX returns rows: [urlkey, timestamp, original, mimetype, statuscode, digest, length].
+  // CDX doesn't set CORS headers, so we go through corsproxy.io (free, no key).
+  const cdxBare = `https://web.archive.org/cdx/search/cdx?url=${encodeURIComponent(key)}&from=19990101&to=20011231&filter=statuscode:200&limit=25&output=json`;
+  const cdx = `https://corsproxy.io/?${encodeURIComponent(cdxBare)}`;
+
+  try {
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), 6000);
+    const res = await fetch(cdx, { signal: ctrl.signal });
+    clearTimeout(tid);
+    if (!res.ok) throw new Error('cdx http ' + res.status);
+    const rows = await res.json();
+    // First row is the header; skip it.
+    if (!Array.isArray(rows) || rows.length < 2) {
+      __waybackCache[key] = { available: false };
+      return __waybackCache[key];
+    }
+    const data = rows.slice(1);
+    // Pick the snapshot closest to 20000615 (mid-2000).
+    const target = 20000615000000;
+    let best = null, bestDist = Infinity;
+    for (const r of data) {
+      const ts = r[1];
+      if (!ts || ts.length < 8) continue;
+      const tsNum = parseInt(ts.padEnd(14,'0'), 10);
+      const d = Math.abs(tsNum - target);
+      if (d < bestDist) { bestDist = d; best = r; }
+    }
+    if (!best) {
+      __waybackCache[key] = { available: false };
+      return __waybackCache[key];
+    }
+    const ts = best[1];
+    const orig = best[2]; // e.g. http://www.petco.com:80/
+    const iframeUrl = `https://web.archive.org/web/${ts}if_/${orig}`;
+    const viewUrl   = `https://web.archive.org/web/${ts}/${orig}`;
+    const yyyy = ts.slice(0,4), mm = ts.slice(4,6), dd = ts.slice(6,8);
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const displayDate = `${months[Math.max(0,parseInt(mm,10)-1)]} ${parseInt(dd,10)}, ${yyyy}`;
+    __waybackCache[key] = {
+      available: true,
+      iframeUrl,
+      viewUrl,
+      timestamp: ts,
+      displayDate,
+    };
+    return __waybackCache[key];
+  } catch (e) {
+    __waybackCache[key] = { available: false, error: String(e) };
+    return __waybackCache[key];
+  }
+}
+
+// Render a real Wayback snapshot inside our IE5 chrome.
+// Loads as iframe; if it fails within 3s, swaps in a fallback card.
+function renderWaybackSnapshot(domain, wb, profile) {
+  const p = (profile && profile.palette) || { primary:'#003399', secondary:'#000000', accent:'#ffffff', displayName: domain };
+  const displayName = (profile && profile.displayName) || domain;
+  const frameId = 'wb-frame-' + Math.random().toString(36).slice(2,8);
+  const fallbackId = 'wb-fallback-' + frameId;
+
+  return `
+  <div style="background:${p.accent}; min-height:100vh; padding-bottom:90px; color:${p.secondary}; font-family:'Times New Roman',serif;">
+
+    <!-- Marquee in brand colors -->
+    <marquee scrollamount="6" style="background:${p.primary}; color:${p.accent}; font-family:'Courier New',monospace; padding:4px 0; font-size:13px; border-bottom:2px ridge ${p.secondary};">
+      &#10024; GENUINE ${wb.displayDate.toUpperCase()} ARCHIVE OF ${displayName.toUpperCase()} &#10024; SERVED FRESH FROM THE WAYBACK MACHINE &#10024; Y2K COMPLIANT!! &#10024; OPTIMIZED FOR NETSCAPE 4 + IE5 &#10024;
+    </marquee>
+
+    <!-- Snapshot ribbon -->
+    <div style="background:linear-gradient(180deg, ${p.primary}, ${p.secondary}); color:${p.accent}; padding:10px 14px; border-bottom:3px ridge ${p.accent}; font-family:Verdana,sans-serif;">
+      <table style="width:100%; max-width:1100px; margin:0 auto; border-collapse:collapse;"><tr>
+        <td style="font-size:13px; font-weight:bold; letter-spacing:1px;">
+          &#10024; GENUINE ${wb.displayDate.toUpperCase()} SNAPSHOT &#10024;
+        </td>
+        <td style="text-align:right; font-size:11px;">
+          archived ${wb.displayDate} &middot;
+          <a href="${wb.viewUrl}" target="_blank" style="color:${p.accent}; text-decoration:underline;">view on archive.org &rarr;</a>
+        </td>
+      </tr></table>
+    </div>
+
+    <!-- The real snapshot, in an iframe. Loading splash sits behind the iframe
+         so users see something while Wayback responds. -->
+    <div style="position:relative; background:#fff; max-width:1100px; margin:14px auto 0; border:2px inset ${p.secondary}; box-shadow:0 0 0 1px ${p.primary}; min-height:520px;">
+      <div id="${frameId}-splash" style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:14px; padding:24px; text-align:center; font-family:'Times New Roman',serif; color:${p.secondary};">
+        <div style="width:48px; height:48px; border:4px solid ${p.primary}40; border-top-color:${p.primary}; border-radius:50%; animation:wb-spin 0.9s linear infinite;"></div>
+        <div style="font-size:16px;"><b>Dialing the archive...</b></div>
+        <div style="font-size:12px; color:${p.secondary}99;">Fetching the ${wb.displayDate} snapshot from web.archive.org</div>
+      </div>
+      <style>@keyframes wb-spin { to { transform: rotate(360deg); } }</style>
+      <iframe id="${frameId}"
+              src="${wb.iframeUrl}"
+              data-wb-fallback="${fallbackId}"
+              data-wb-splash="${frameId}-splash"
+              onload="this.dataset.wbLoaded='1';var s=document.getElementById(this.dataset.wbSplash);if(s)s.style.display='none';"
+              style="position:relative; width:100%; height:calc(100vh - 220px); min-height:520px; border:0; background:#fff; display:block;"
+              referrerpolicy="no-referrer"
+              sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+              loading="eager"></iframe>
+      <div id="${fallbackId}" style="display:none; padding:60px 24px; text-align:center; font-family:Verdana,sans-serif;">
+        <div style="font-size:48px; line-height:1; margin-bottom:16px;">&#10024;</div>
+        <h2 style="margin:0 0 10px; font-family:'Times New Roman',serif; color:${p.primary}; font-size:24px;">The archive is being slow today.</h2>
+        <p style="margin:0 0 18px; color:${p.secondary}; font-size:14px;">A real ${wb.displayDate} snapshot of <b>${displayName}</b> exists, but the Wayback Machine didn't load it in time.</p>
+        <a href="${wb.viewUrl}" target="_blank" style="display:inline-block; padding:12px 28px; background:${p.primary}; color:${p.accent}; text-decoration:none; font-family:Verdana; font-size:14px; font-weight:bold; border:3px outset ${p.primary};">VIEW ON ARCHIVE.ORG &rarr;</a>
+      </div>
+    </div>
+
+    <!-- Footer bar with Ramp tag + restart -->
+    <div style="max-width:1100px; margin:14px auto 0; padding:10px 14px; border-top:1px solid ${p.secondary}40; font-family:Verdana,sans-serif; font-size:11px; color:${p.secondary}; text-align:center;">
+      ${window.bestViewedBadge ? window.bestViewedBadge() : ''}
+      <div style="margin-top:8px;">${window.footerTag ? window.footerTag() : ''}</div>
+      <div style="margin-top:10px;">
+        <button data-restart style="background:${p.primary}; border:3px outset ${p.primary}; color:${p.accent}; padding:5px 16px; font-family:Verdana; font-size:11px; font-weight:bold;">[ Y2K-ify another &raquo; ]</button>
+      </div>
+    </div>
+
+    ${window.rampPopupReSpawn ? window.rampPopupReSpawn('wayback-popup') : ''}
+  </div>`;
+}
+
+// Call after the snapshot HTML has been injected into the DOM. Watches the
+// iframe for a 10s load timeout (or error) and swaps to the fallback card.
+// Wayback can be slow, so we give it real time before giving up.
+function wireWaybackFallback(root) {
+  const frames = (root || document).querySelectorAll('iframe[data-wb-fallback]');
+  frames.forEach((f) => {
+    const fb = document.getElementById(f.dataset.wbFallback);
+    const splash = f.dataset.wbSplash ? document.getElementById(f.dataset.wbSplash) : null;
+    if (!fb) return;
+    f.addEventListener('error', () => {
+      f.style.display = 'none';
+      if (splash) splash.style.display = 'none';
+      fb.style.display = 'block';
+    });
+    setTimeout(() => {
+      if (f.dataset.wbLoaded !== '1') {
+        f.style.display = 'none';
+        if (splash) splash.style.display = 'none';
+        fb.style.display = 'block';
+      }
+    }, 10000);
+  });
+}
+
+window.lookupWayback = lookupWayback;
+window.renderWaybackSnapshot = renderWaybackSnapshot;
+window.wireWaybackFallback = wireWaybackFallback;
+
 /* ---------- Keyword → category map ---------- */
 // Order matters: earlier matches win.
 const CATEGORY_RULES = [
@@ -12,7 +180,7 @@ const CATEGORY_RULES = [
   { cat: 'media',     re: /(news|times|post|tribune|herald|gazette|journal|magazine|cnn|bbc|fox|nbc|abc|cbs|msnbc|nyt|reuters|bloomberg|wsj|guardian|vogue|wired|theverge|techcrunch|vice|buzzfeed|huffpost|mashable|gizmodo)/ },
   { cat: 'film',      re: /(spotify|soundcloud|pandora|tidal|deezer|apple\.music|youtubemusic|audible|podcast|music|audio|records|sony\.music|warnermusic|universalmusic)/ }, // music = entertainment/cinematic vibe
   { cat: 'corp',      re: /(tesla|ford|gm|toyota|honda|bmw|mercedes|audi|volkswagen|porsche|ferrari|lambo|kia|hyundai|nissan|subaru|volvo|jaguar|landrover|rivian|lucid|polestar|car|auto|motors|peloton|nike|adidas|puma|underarmour|lululemon|gap|uniqlo|hm|zara|levis|gucci|prada|chanel|lvmh|cartier|rolex|tiffany|coach|katespade|guess)/ },
-  { cat: 'ecommerce', re: /(shop|store|buy|cart|market|deal|amazon|ebay|etsy|walmart|target|costco|bestbuy|ikea|home\.depot|wayfair|alibaba|aliexpress|shein|temu|zappos|nordstrom|macys|sephora|ulta)/ },
+  { cat: 'ecommerce', re: /(shop|store|buy|cart|market|deal|amazon|ebay|etsy|walmart|target|costco|bestbuy|ikea|home\.depot|wayfair|alibaba|aliexpress|shein|temu|zappos|nordstrom|macys|sephora|ulta|petco|petsmart|chewy|petfood|pets)/ },
   { cat: 'food',      re: /(food|eat|restaurant|pizza|burger|chicken|coffee|coke|pepsi|sprite|mcdonald|mcd|burgerking|wendys|kfc|tacobell|chipotle|subway|dominos|papajohns|starbucks|dunkin|doordash|ubereats|grubhub|seamless|caviar|postmates|deliveroo|fritolay|hersheys|kelloggs|nestle|kraft|heinz|oreo|lays|doritos|cheetos|skittles|mms|snickers|kitkat|reeses)/ },
   { cat: 'film',      re: /(movie|film|cinema|imdb|netflix|hbo|disney|hulu|paramount|warnerbros|warner|universal|sonypictures|mgm|miramax|a24|fox|peacock|max|primevideo|appletv|theater|theatre|trailer|boxoffice)/ },
   { cat: 'community', re: /(forum|reddit|discord|4chan|digg|slashdot|quora|stackoverflow|stackexchange|community|board|wiki|fandom|deviantart|tumblr|livejournal|xanga|myspace|orkut|friendster|hi5)/ },
@@ -213,6 +381,49 @@ function pillBtn(text, href, p) {
   return `<a href="${href||'#'}" style="display:inline-block; padding:6px 14px; background:linear-gradient(180deg,${p.accent} 0%, ${p.primary} 100%); color:${p.secondary}; text-decoration:none; font-family:Verdana,Arial,sans-serif; font-size:12px; font-weight:bold; border:2px outset ${p.accent}; margin:2px;">${text}</a>`;
 }
 
+/* Utility: inline-SVG product/content icons (pixel-art style, Y2K stock-clip-art vibe).
+   Pool of ~12 motifs. Pick deterministically by index so each tile gets a different one.
+   Tinted with the variant palette via currentColor + accent fills. */
+function productIcon(idx, p, w, h) {
+  w = w || 100; h = h || 80;
+  const prim = p.primary || '#000';
+  const acc  = p.accent  || '#fff';
+  const sec  = p.secondary || '#eee';
+  // 12 distinct SVG motifs — boxed product, CD, book, monitor, gift, camera, headphones,
+  // floppy disk, t-shirt, watch, sneaker, mug.
+  const svgs = [
+    // 0 — boxed product (cardboard box w/ stripe)
+    `<svg viewBox='0 0 100 80' xmlns='http://www.w3.org/2000/svg'><rect x='15' y='22' width='70' height='48' fill='${prim}'/><rect x='15' y='22' width='70' height='10' fill='${acc}'/><line x1='50' y1='22' x2='50' y2='70' stroke='${sec}' stroke-width='1.5'/><polygon points='15,22 50,8 85,22 50,32' fill='${prim}' stroke='${acc}' stroke-width='1'/></svg>`,
+    // 1 — CD/disc
+    `<svg viewBox='0 0 100 80' xmlns='http://www.w3.org/2000/svg'><circle cx='50' cy='40' r='30' fill='${prim}'/><circle cx='50' cy='40' r='22' fill='none' stroke='${acc}' stroke-width='1'/><circle cx='50' cy='40' r='14' fill='none' stroke='${acc}' stroke-width='1'/><circle cx='50' cy='40' r='6' fill='${sec}'/><circle cx='50' cy='40' r='2' fill='${prim}'/></svg>`,
+    // 2 — book with bookmark
+    `<svg viewBox='0 0 100 80' xmlns='http://www.w3.org/2000/svg'><rect x='22' y='12' width='50' height='60' fill='${prim}'/><rect x='22' y='12' width='50' height='6' fill='${acc}'/><line x1='32' y1='28' x2='62' y2='28' stroke='${acc}' stroke-width='1.2'/><line x1='32' y1='38' x2='62' y2='38' stroke='${acc}' stroke-width='1.2'/><line x1='32' y1='48' x2='62' y2='48' stroke='${acc}' stroke-width='1.2'/><polygon points='60,12 68,12 64,22' fill='${sec}'/></svg>`,
+    // 3 — CRT monitor
+    `<svg viewBox='0 0 100 80' xmlns='http://www.w3.org/2000/svg'><rect x='14' y='14' width='72' height='44' rx='4' fill='${prim}'/><rect x='20' y='20' width='60' height='32' fill='${acc}'/><rect x='44' y='58' width='12' height='6' fill='${prim}'/><rect x='30' y='64' width='40' height='4' fill='${sec}'/></svg>`,
+    // 4 — gift box
+    `<svg viewBox='0 0 100 80' xmlns='http://www.w3.org/2000/svg'><rect x='20' y='30' width='60' height='40' fill='${prim}'/><rect x='46' y='30' width='8' height='40' fill='${acc}'/><rect x='20' y='30' width='60' height='8' fill='${sec}'/><path d='M50 30 Q 30 12 40 26 Q 52 18 50 30 Q 48 18 60 26 Q 70 12 50 30' fill='${acc}'/></svg>`,
+    // 5 — camera
+    `<svg viewBox='0 0 100 80' xmlns='http://www.w3.org/2000/svg'><rect x='18' y='22' width='64' height='40' rx='4' fill='${prim}'/><rect x='38' y='16' width='24' height='10' fill='${prim}'/><circle cx='50' cy='42' r='14' fill='${sec}'/><circle cx='50' cy='42' r='9' fill='${acc}'/><circle cx='50' cy='42' r='4' fill='${prim}'/><rect x='66' y='26' width='6' height='4' fill='${acc}'/></svg>`,
+    // 6 — headphones
+    `<svg viewBox='0 0 100 80' xmlns='http://www.w3.org/2000/svg'><path d='M22 46 Q 22 18 50 18 Q 78 18 78 46' fill='none' stroke='${prim}' stroke-width='5'/><rect x='16' y='42' width='14' height='20' rx='3' fill='${prim}'/><rect x='70' y='42' width='14' height='20' rx='3' fill='${prim}'/><rect x='20' y='46' width='6' height='12' fill='${acc}'/><rect x='74' y='46' width='6' height='12' fill='${acc}'/></svg>`,
+    // 7 — floppy disk
+    `<svg viewBox='0 0 100 80' xmlns='http://www.w3.org/2000/svg'><rect x='22' y='14' width='56' height='56' fill='${prim}'/><rect x='30' y='14' width='40' height='22' fill='${acc}'/><rect x='52' y='18' width='8' height='14' fill='${prim}'/><rect x='30' y='44' width='40' height='22' fill='${sec}'/><rect x='34' y='48' width='32' height='3' fill='${prim}'/><rect x='34' y='54' width='32' height='3' fill='${prim}'/></svg>`,
+    // 8 — t-shirt
+    `<svg viewBox='0 0 100 80' xmlns='http://www.w3.org/2000/svg'><path d='M30 22 L 18 32 L 26 42 L 30 38 L 30 72 L 70 72 L 70 38 L 74 42 L 82 32 L 70 22 L 60 22 Q 50 32 40 22 Z' fill='${prim}'/><circle cx='50' cy='52' r='8' fill='${acc}'/></svg>`,
+    // 9 — watch
+    `<svg viewBox='0 0 100 80' xmlns='http://www.w3.org/2000/svg'><rect x='42' y='4' width='16' height='14' fill='${prim}'/><rect x='42' y='62' width='16' height='14' fill='${prim}'/><circle cx='50' cy='40' r='22' fill='${prim}'/><circle cx='50' cy='40' r='16' fill='${acc}'/><line x1='50' y1='40' x2='50' y2='28' stroke='${prim}' stroke-width='2'/><line x1='50' y1='40' x2='60' y2='40' stroke='${prim}' stroke-width='2'/></svg>`,
+    // 10 — sneaker
+    `<svg viewBox='0 0 100 80' xmlns='http://www.w3.org/2000/svg'><path d='M14 56 L 14 46 L 32 38 L 56 36 Q 78 38 84 50 L 84 60 L 14 60 Z' fill='${prim}'/><rect x='14' y='58' width='72' height='6' fill='${acc}'/><line x1='40' y1='40' x2='44' y2='52' stroke='${sec}' stroke-width='1.5'/><line x1='50' y1='38' x2='54' y2='52' stroke='${sec}' stroke-width='1.5'/><line x1='60' y1='38' x2='64' y2='52' stroke='${sec}' stroke-width='1.5'/></svg>`,
+    // 11 — mug
+    `<svg viewBox='0 0 100 80' xmlns='http://www.w3.org/2000/svg'><rect x='28' y='22' width='40' height='44' rx='3' fill='${prim}'/><rect x='32' y='26' width='32' height='6' fill='${acc}'/><path d='M68 32 Q 84 32 84 46 Q 84 60 68 60' fill='none' stroke='${prim}' stroke-width='4'/><path d='M40 14 Q 42 8 44 14 M48 14 Q 50 8 52 14 M56 14 Q 58 8 60 14' stroke='${sec}' stroke-width='1.5' fill='none'/></svg>`,
+  ];
+  const svg = svgs[idx % svgs.length];
+  // Wrap in a tinted frame so it reads as a product card.
+  return `<div style="width:100%; height:${h}px; background:${sec}; border:1px solid ${prim}55; display:flex; align-items:center; justify-content:center; overflow:hidden;">
+    <div style="width:${w}px; height:${h-10}px;">${svg.replace("<svg ", `<svg width='100%' height='100%' preserveAspectRatio='xMidYMid meet' `)}</div>
+  </div>`;
+}
+
 /* ---------- 1. DARK GAME SHRINE (Diablo II / CS / Tomb Raider) ---------- */
 function tplDarkGameShrine(d, p) {
   const news = (d.bullets || []).slice(0, 5);
@@ -236,8 +447,6 @@ function tplDarkGameShrine(d, p) {
           <a href="#" style="color:${p.primary}; text-decoration:none; margin:0 8px; font-variant:small-caps; font-size:14px;">[ Support ]</a>
         </div>
       </div>
-
-      ${rampBanner468('shrine-top')}
 
       <!-- Two columns: nav sidebar + main content -->
       <table style="width:100%; border-collapse:collapse; margin-top:12px;"><tr>
@@ -281,8 +490,6 @@ function tplDarkGameShrine(d, p) {
             </div>
           </div>
 
-          ${rampBannerExpense('shrine-mid')}
-
           <div style="margin-top:12px; background:#0a0a0a; border:2px ridge ${p.primary}80; padding:14px;">
             <h2 style="color:${p.primary}; font-family:'Georgia',serif; font-variant:small-caps; margin:0 0 10px;">&#9886; Community</h2>
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; font-family:'Verdana',sans-serif; font-size:12px; color:${p.accent};">
@@ -293,7 +500,6 @@ function tplDarkGameShrine(d, p) {
             </div>
           </div>
 
-          ${rampHitCounter()}
         </td>
       </tr></table>
 
@@ -333,8 +539,6 @@ function tplFlashPromoCinematic(d, p) {
         </div>
       </div>
 
-      ${rampBanner468('promo-top')}
-
       <!-- "Now showing" promo card -->
       <div style="margin:30px auto; max-width:640px; background:${p.primary}; border:6px double ${p.accent}; padding:28px 22px; box-shadow:12px 12px 0 ${p.accent}40;">
         <div style="font-family:'Times New Roman',serif; font-style:italic; color:${p.accent}; font-size:14px; letter-spacing:6px; text-align:center;">NOW PLAYING</div>
@@ -355,8 +559,6 @@ function tplFlashPromoCinematic(d, p) {
         `).join('')}
       </div>
 
-      ${rampBannerExpense('promo-mid')}
-
       <div style="text-align:center; margin:40px 0 20px;">
         <div style="font-family:'Times New Roman',serif; font-style:italic; color:${p.accent}80; font-size:11px; letter-spacing:4px;">A FILM BY THE INTERNET &middot; MMXXVI &middot; RATED Y2K</div>
       </div>
@@ -369,7 +571,6 @@ function tplFlashPromoCinematic(d, p) {
         </div>
       </div>
 
-      ${rampHitCounter()}
     </div>
 
     ${rampPopupReSpawn('promo-popup')}
@@ -462,10 +663,9 @@ function tplMaximalPortal(d, p) {
             </ol>
           </div>
 
-          ${rampHitCounter()}
         </td>
 
-        <!-- Right rail: news + ads -->
+        <!-- Right rail: news -->
         <td style="width:160px; vertical-align:top; padding:4px;">
           <div style="background:${p.primary}40; border:1px solid ${p.accent}; padding:6px;">
             <div style="background:${p.primary}; color:${p.accent}; padding:3px 6px; font-weight:bold;">NEWS</div>
@@ -475,8 +675,6 @@ function tplMaximalPortal(d, p) {
               <p style="margin:0;"><b style="color:${p.accent};">Contest:</b> win a copy of Quake III!!</p>
             </div>
           </div>
-
-          <div style="margin-top:8px;">${aolCdFloater('maxportal-aol')}</div>
         </td>
       </tr></table>
 
@@ -568,7 +766,6 @@ function tplCorpEcommercePortal(d, p) {
             <div style="font-size:11px; color:#666; margin-top:4px;">Sign in to see your Wishlist, Wedding Registry &amp; Baby Registry.</div>
           </div>
 
-          ${rampSkyscraper('ecom-sky')}
         </td>
 
         <!-- Main: product grid -->
@@ -584,10 +781,9 @@ function tplCorpEcommercePortal(d, p) {
                 const item = items[i] || items[i%items.length];
                 const price = (9.99 + Math.floor(Math.random()*40)).toFixed(2);
                 const wasPrice = (parseFloat(price) + Math.floor(Math.random()*15+5)).toFixed(2);
+                const iconIdx = (hashStrA(p.domain + 'tile' + i) || 0) % 12;
                 return `<td style="width:33%; padding:10px; border:1px solid #ddd; vertical-align:top; background:#fff;">
-                  <div style="width:100%; height:80px; background:linear-gradient(135deg, ${p.primary}40, ${p.accent}40); border:1px solid #ccc; display:flex; align-items:center; justify-content:center; font-family:Arial Black; color:${p.primary}; font-size:24px;">
-                    [${item.replace(/&#9733;\s*/,'').substring(0,2).toUpperCase()}]
-                  </div>
+                  ${productIcon(iconIdx, p, 90, 80)}
                   <div style="font-family:Times New Roman,serif; font-size:12px; margin-top:6px; color:${p.primary}; font-weight:bold; min-height:32px;"><a href="#" style="color:${p.primary};">${item.replace(/&#9733;\s*/,'')}</a></div>
                   <div style="font-size:10px; color:#999; margin-top:2px;">${'&#11088;'.repeat(Math.floor(Math.random()*3+3))} <span style="color:#666;">(${Math.floor(Math.random()*900+50)})</span></div>
                   <div style="margin-top:4px;">
@@ -612,7 +808,6 @@ function tplCorpEcommercePortal(d, p) {
             </div>
           </div>
 
-          ${rampHitCounter()}
         </td>
       </tr></table>
 
@@ -659,8 +854,6 @@ function tplCorpConsumerBrand(d, p) {
         <a href="${d.rampLink}" target="_blank" style="display:inline-block; padding:14px 36px; background:linear-gradient(180deg, ${p.primary}, ${p.secondary}); color:${p.accent}; font-family:Arial Black; font-size:20px; text-decoration:none; border:4px outset ${p.primary}; letter-spacing:2px;">CLICK HERE NOW! &raquo;</a>
       </div>
 
-      ${rampBanner468('consumer-top')}
-
       <!-- Three-up promo cards -->
       <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px;">
         ${(d.bullets || []).slice(0,3).map((b,i) => {
@@ -683,8 +876,6 @@ function tplCorpConsumerBrand(d, p) {
         <a href="#" style="display:inline-block; margin-left:4px; padding:6px 18px; background:${p.accent}; color:${p.primary}; font-family:Arial Black; font-size:14px; text-decoration:none; border:2px outset ${p.accent};">JOIN!!</a>
       </div>
 
-      ${rampBannerExpense('consumer-mid')}
-
       <div style="margin-top:14px; text-align:center; font-family:Arial,sans-serif; font-size:11px; color:#000;">
         <div>&copy; ${d.domain} MMXXVI &middot; All rights reserved &middot; <a href="#" style="color:${p.primary};">Terms</a> &middot; <a href="#" style="color:${p.primary};">Privacy</a> &middot; <a href="#" style="color:${p.primary};">Contact</a></div>
         <div style="margin-top:8px;">${bestViewedBadge()}</div>
@@ -692,7 +883,6 @@ function tplCorpConsumerBrand(d, p) {
         <div style="margin-top:8px;">
           <button data-restart style="background:${p.primary}; border:3px outset ${p.primary}; color:${p.accent}; padding:4px 14px; font-family:Arial Black; font-size:11px;">Y2K-IFY ANOTHER SITE &raquo;</button>
         </div>
-        ${rampHitCounter()}
       </div>
     </div>
 
@@ -738,8 +928,6 @@ function tplBrightEntertainment(d, p) {
         <a href="${d.rampLink}" target="_blank" style="display:inline-block; padding:12px 28px; background:linear-gradient(180deg, ${p.primary}, ${p.secondary}); color:${p.accent}; border:4px outset ${p.accent}; border-radius:24px; font-family:'Comic Sans MS'; font-size:20px; font-weight:bold; text-decoration:none;">${d.cta} &raquo;</a>
       </div>
 
-      ${rampBanner468('bright-top')}
-
       <!-- Three-up: characters / features / community -->
       <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px; margin-top:14px;">
         ${(d.bullets || []).slice(0,3).map((b,i) => {
@@ -763,8 +951,6 @@ function tplBrightEntertainment(d, p) {
           <div><b style="color:${p.secondary}; font-size:20px;">99%</b><br>kid-safe</div>
         </div>
       </div>
-
-      ${rampBannerExpense('bright-mid')}
 
       ${rampHitCounter()}
 
@@ -807,8 +993,6 @@ function tplDesignAgency(d, p) {
         <div style="position:absolute; right:90px; top:62px; width:30px; height:30px; background:${p.secondary}; transform:rotate(45deg);"></div>
       </div>
 
-      ${rampBanner468('agency-top')}
-
       <!-- Three-column grid of "case studies" -->
       <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:24px; margin-top:30px;">
         ${(d.bullets || []).slice(0,3).map((b,i) => {
@@ -837,8 +1021,6 @@ function tplDesignAgency(d, p) {
         </div>
       </div>
 
-      ${rampBannerExpense('agency-mid')}
-
       <!-- Client logos placeholder -->
       <div style="margin-top:40px;">
         <div style="font-family:Helvetica,sans-serif; font-size:11px; letter-spacing:4px; color:${p.primary}; text-transform:uppercase; margin-bottom:14px;">// Selected Clients</div>
@@ -848,8 +1030,6 @@ function tplDesignAgency(d, p) {
           ).join('')}
         </div>
       </div>
-
-      ${rampHitCounter()}
 
       <div style="margin-top:40px; padding-top:14px; border-top:1px solid ${p.secondary}40; font-family:Helvetica,sans-serif; font-size:10px; letter-spacing:2px; color:${p.secondary}80; text-transform:uppercase; display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px;">
         <div>(c) ${d.domain} MMXXVI &middot; All rights reserved.</div>
@@ -1135,7 +1315,18 @@ function renderVariant(d, p) {
   // selectively transform inner content. Skip if voice is 'corporate' (no change).
   // To keep things safe we only transform text inside specific marker classes if templates expose them.
 
-  return applyVariantWrapper(inner, p, t);
+  // 'Simulated Y2K' ribbon: small badge that says this site didn't exist in Y2K
+  // and our render is a stylistic take. Fixed high-contrast colors so it stays
+  // readable on every archetype palette.
+  const ribbon = `
+  <div style="background:#000080; color:#ffffff; padding:6px 14px; border-bottom:2px ridge #ffff00; font-family:Verdana,sans-serif; font-size:11px; letter-spacing:1px;">
+    <table style="width:100%; max-width:1100px; margin:0 auto; border-collapse:collapse;"><tr>
+      <td><b style="color:#ffff00;">&#10024; SIMULATED Y2K</b> &middot; ${p.domain || p.sitename} didn't exist in the year 2000, so we made it up.</td>
+      <td style="text-align:right; opacity:0.85;">archetype: <b>${p.archetype}</b></td>
+    </tr></table>
+  </div>`;
+
+  return applyVariantWrapper(ribbon + inner, p, t);
 }
 
 // Expose

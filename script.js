@@ -453,6 +453,14 @@ function routeTo(domain, opts) {
   opts = opts || {};
   // Reflect the route in the URL bar unless we're already responding to a popstate.
   if (!opts.skipPush) pushDomainPath(domain);
+
+  // Kick off the Wayback lookup IN PARALLEL with the dial-up animation, so the
+  // result is (usually) cached by the time renderSite needs it. We don't await
+  // here; lookupWayback caches its own result.
+  if (!CURATED[domain] && window.lookupWayback) {
+    window.lookupWayback(domain).catch(() => {});
+  }
+
   // show dialing modal
   document.getElementById('dial-target').textContent = 'http://www.' + domain;
   document.getElementById('dial-action').textContent = 'Dialing...';
@@ -520,7 +528,7 @@ function hashStr(s) {
   return Math.abs(h);
 }
 
-function renderSite(domain) {
+async function renderSite(domain) {
   // Special case: ramp.com redirects to the real ramp2000 site
   if (domain === 'ramp.com') {
     window.location.href = 'https://kendallhtucker.github.io/ramp2000/';
@@ -538,6 +546,28 @@ function renderSite(domain) {
   } else {
     data = genericSiteData(domain);
     template = 'variant'; // uncurated -> archetype + variant traits
+  }
+
+  // For uncurated sites, check if Wayback has a Y2K-era snapshot.
+  // If yes: serve it through our chrome instead of generating.
+  // If no: fall through to the variant pipeline.
+  if (template === 'variant' && window.lookupWayback) {
+    try {
+      const wb = await window.lookupWayback(domain);
+      if (wb && wb.available) {
+        const profile = window.brandProfile ? window.brandProfile(domain) : null;
+        const html = window.renderWaybackSnapshot(domain, wb, profile);
+        render.innerHTML = html;
+        render.querySelectorAll('[data-restart]').forEach(b => b.addEventListener('click', restartFlow));
+        if (window.wireWaybackFallback) window.wireWaybackFallback(render);
+        document.getElementById('footbar').classList.remove('hidden');
+        bumpAndShowCounter(domain);
+        window.scrollTo(0,0);
+        return;
+      }
+    } catch (e) {
+      console.warn('wayback lookup failed, generating instead', e);
+    }
   }
 
   // For unknown sites, attempt live-fetch enrichment.
