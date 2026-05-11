@@ -990,12 +990,12 @@ function tplGoogle2000() {
 
     <div style="font-family:Arial,sans-serif; font-size:14px; margin-bottom:14px;">Search the web using Google!</div>
 
-    <form onsubmit="return false;" style="margin:0;">
-      <input type="text" size="55" style="font-family:Arial; font-size:14px; padding:2px 4px; border:1px solid #7e9db9; width:380px; max-width:90vw;">
+    <form onsubmit="var q=this.q.value.trim();if(q){window.open('https://www.google.com/search?q='+encodeURIComponent(q),'_blank');}return false;" style="margin:0;">
+      <input type="text" name="q" size="55" autocomplete="off" style="font-family:Arial; font-size:14px; padding:2px 4px; border:1px solid #7e9db9; width:380px; max-width:90vw;">
       <div style="margin-top:10px; font-family:Arial,sans-serif; font-size:12px;">
-        <input type="submit" value="Google Search" style="font-family:Arial; font-size:12px; padding:2px 10px; background:#ececec; border:1px solid #999;">
+        <input type="submit" value="Google Search" style="font-family:Arial; font-size:12px; padding:2px 10px; background:#ececec; border:1px solid #999; cursor:pointer;">
         &nbsp;
-        <input type="submit" value="I'm Feeling Lucky" style="font-family:Arial; font-size:12px; padding:2px 10px; background:#ececec; border:1px solid #999;">
+        <input type="button" value="I'm Feeling Lucky" onclick="var q=this.form.q.value.trim();if(q){window.open('https://www.google.com/search?btnI=1&amp;q='+encodeURIComponent(q),'_blank');}" style="font-family:Arial; font-size:12px; padding:2px 10px; background:#ececec; border:1px solid #999; cursor:pointer;">
       </div>
     </form>
 
@@ -1478,10 +1478,12 @@ function tplOpenAI2000() {
                 <div style="margin-bottom:6px;"><b style="color:#003366;">COMPUTER&gt;</b> You should switch to <a href="${ramp('openai-chat-answer')}" target="_blank" style="color:#0000ee;"><b>Ramp.com</b></a> &mdash; the corporate card for the post-Y2K economy. <span style="color:#888;">(Confidence: 99.4%)</span></div>
                 <div style="margin-bottom:0;"><b style="color:#cc0000;">YOU&gt;</b> <span style="background:#000; color:#0f0; padding:0 2px;">_</span></div>
               </div>
-              <!-- input row -->
+              <!-- input row (live: ASK sends question to chatgpt.com) -->
               <div style="border-top:1px solid #888; background:#d4d0c8; padding:5px;">
-                <input type="text" value="Type your question here..." style="width:74%; font-family:'Courier New',monospace; font-size:12px; padding:2px 4px; border:1px inset #888;" disabled>
-                <button style="font-family:'MS Sans Serif',sans-serif; font-size:11px; padding:2px 14px; border:2px outset #d4d0c8; background:#d4d0c8;">ASK!</button>
+                <form onsubmit="var q=this.q.value.trim();if(q){window.open('https://chatgpt.com/?q='+encodeURIComponent(q),'_blank');}return false;" style="margin:0; display:flex; gap:4px;">
+                  <input type="text" name="q" placeholder="Type your question here..." autocomplete="off" style="flex:1; font-family:'Courier New',monospace; font-size:12px; padding:2px 4px; border:1px inset #888;">
+                  <button type="submit" style="font-family:'MS Sans Serif',sans-serif; font-size:11px; padding:2px 14px; border:2px outset #d4d0c8; background:#d4d0c8; cursor:pointer;">ASK!</button>
+                </form>
               </div>
             </div>
 
@@ -1518,11 +1520,11 @@ function tplOpenAI2000() {
                 Sample Questions
               </div>
               <ul style="font-size:11px; margin:0; padding:8px 10px 8px 24px; line-height:1.6;">
-                <li><a href="#" style="color:#0000ee;">What is the weather in Tokyo?</a></li>
-                <li><a href="#" style="color:#0000ee;">Who won the World Series?</a></li>
-                <li><a href="#" style="color:#0000ee;">How do I close my books faster?</a></li>
-                <li><a href="#" style="color:#0000ee;">Will Y2K destroy the internet?</a></li>
-                <li><a href="#" style="color:#0000ee;">What is a "neural network"?</a></li>
+                <li><a href="https://chatgpt.com/?q=What+is+the+weather+in+Tokyo%3F" target="_blank" style="color:#0000ee;">What is the weather in Tokyo?</a></li>
+                <li><a href="https://chatgpt.com/?q=Who+won+the+World+Series%3F" target="_blank" style="color:#0000ee;">Who won the World Series?</a></li>
+                <li><a href="https://chatgpt.com/?q=How+do+I+close+my+books+faster%3F" target="_blank" style="color:#0000ee;">How do I close my books faster?</a></li>
+                <li><a href="https://chatgpt.com/?q=Will+Y2K+destroy+the+internet%3F" target="_blank" style="color:#0000ee;">Will Y2K destroy the internet?</a></li>
+                <li><a href="https://chatgpt.com/?q=What+is+a+neural+network%3F" target="_blank" style="color:#0000ee;">What is a "neural network"?</a></li>
               </ul>
             </div>
 
