@@ -408,11 +408,14 @@ function routeTo(domain) {
    ================================================================== */
 
 const CURATED = {
-  'ramp.com':   { template: 'geocities',  data: rampSiteData() },
-  'google.com': { template: 'yahoo',      data: googleSiteData() },
-  'stripe.com': { template: '2advanced',  data: stripeSiteData() },
+  // ramp.com: special-cased above (redirect to ramp2000)
+  'google.com':  { template: 'google2000',  data: null },
+  'nytimes.com': { template: 'nytimes2000', data: null },
+  'apple.com':   { template: 'apple2000',   data: null },
+  'stripe.com':  { template: '2advanced',   data: stripeSiteData() },
 };
 
+// Templates available for unknown / hash-routed sites
 const TEMPLATE_NAMES = ['geocities', '2advanced', 'yahoo'];
 
 function hashStr(s) {
@@ -441,16 +444,19 @@ function renderSite(domain) {
     data = genericSiteData(domain);
   }
 
-  // For curated sites, render immediately. For unknown, attempt live-fetch enrichment.
+  // For unknown sites, attempt live-fetch enrichment.
   if (!CURATED[domain]) {
     enrichWithLiveFetch(domain, data);
   }
 
   let html = '';
-  if (template === 'geocities') html = tplGeocities(data);
-  else if (template === '2advanced') html = tpl2Advanced(data);
-  else if (template === 'yahoo') html = tplYahoo(data);
-  else html = tplGeocities(data);
+  if (template === 'google2000')      html = tplGoogle2000();
+  else if (template === 'nytimes2000') html = tplNYTimes2000();
+  else if (template === 'apple2000')   html = tplApple2000();
+  else if (template === 'geocities')   html = tplGeocities(data);
+  else if (template === '2advanced')   html = tpl2Advanced(data);
+  else if (template === 'yahoo')       html = tplYahoo(data);
+  else                                 html = tplGeocities(data);
 
   render.innerHTML = html;
 
@@ -953,4 +959,411 @@ function startClock() {
     if (i < times.length - 1) setTimeout(tick, 1800 + Math.random() * 600);
   };
   setTimeout(tick, 2000);
+}
+
+/* ==================================================================
+   ERA-ACCURATE TEMPLATES (Jan 2000 Wayback homages)
+   ================================================================== */
+
+/* ---------- GOOGLE — Feb 29, 2000 ---------- */
+function tplGoogle2000() {
+  return `
+  <div style="background:#fff; min-height:100vh; padding:40px 20px 100px; font-family:'Times New Roman','Arial',serif; color:#000; text-align:center;">
+
+    <!-- "About Google" link, upper right of where the logo is -->
+    <div style="max-width:560px; margin:0 auto; text-align:right; font-family:Arial,sans-serif; font-size:12px;">
+      <a href="#" style="color:#0000cc;">&#8226; About Google</a>
+    </div>
+
+    <!-- The Google wordmark, rendered as styled text (no logo image needed) -->
+    <div style="margin:8px auto 18px; font-family:'Catull','Times New Roman',serif; font-size:96px; font-weight:bold; letter-spacing:-2px; line-height:1; user-select:none;">
+      <span style="color:#0039a6;">G</span><span style="color:#c41200;">o</span><span style="color:#f3c518;">o</span><span style="color:#0039a6;">g</span><span style="color:#1a8f3a;">l</span><span style="color:#c41200;">e</span><sup style="font-size:14px; color:#666; font-weight:normal; font-family:Arial;">SM</sup>
+    </div>
+
+    <div style="font-family:Arial,sans-serif; font-size:14px; margin-bottom:14px;">Search the web using Google!</div>
+
+    <form onsubmit="return false;" style="margin:0;">
+      <input type="text" size="55" style="font-family:Arial; font-size:14px; padding:2px 4px; border:1px solid #7e9db9; width:380px; max-width:90vw;">
+      <div style="margin-top:10px; font-family:Arial,sans-serif; font-size:12px;">
+        <input type="submit" value="Google Search" style="font-family:Arial; font-size:12px; padding:2px 10px; background:#ececec; border:1px solid #999;">
+        &nbsp;
+        <input type="submit" value="I'm Feeling Lucky" style="font-family:Arial; font-size:12px; padding:2px 10px; background:#ececec; border:1px solid #999;">
+      </div>
+    </form>
+
+    <div style="margin-top:14px; font-family:Arial,sans-serif; font-size:12px;">
+      <a href="#" style="color:#0000cc;">Add Free WebSearch To Your Site</a>
+    </div>
+
+    <!-- THE JOKE: a single, tasteful, era-correct Ramp text ad -->
+    <!-- Real Google in early 2000 had NO ads on the homepage. So we add exactly one small line. -->
+    <div style="margin-top:34px; max-width:480px; margin-left:auto; margin-right:auto; padding:8px; border:1px solid #cccccc; background:#ffffe0; font-family:Arial,sans-serif; font-size:12px; text-align:left;">
+      <span style="color:#666;"><b>Sponsored Link:</b></span><br>
+      <a href="${ramp('google2000-sponsored')}" target="_blank" style="color:#0000cc;"><b>Ramp.com</b></a> &mdash; The Corporate Card &amp; Spend Management Platform.
+      <span style="color:#008000;">www.ramp.com</span>
+    </div>
+
+    <!-- footer -->
+    <div style="margin-top:60px; font-family:Arial,sans-serif; font-size:11px;">
+      <span style="color:#666;">&copy;2000 Google Inc.</span> &nbsp;|&nbsp;
+      <a href="#" style="color:#0000cc;">About</a> &nbsp;|&nbsp;
+      <a href="#" style="color:#0000cc;">Search Tips</a> &nbsp;|&nbsp;
+      <a href="#" style="color:#0000cc;">Feedback</a> &nbsp;|&nbsp;
+      <a href="${ramp('google2000-hiring')}" target="_blank" style="color:#0000cc;">We&apos;re Hiring!</a>
+    </div>
+
+    <div style="margin-top:60px; font-family:Arial,sans-serif; font-size:11px; color:#666;">
+      <button data-restart style="background:#ececec; border:1px solid #999; padding:2px 10px; font-family:Arial; font-size:11px;">[Y2K-ify another site]</button>
+    </div>
+  </div>`;
+}
+
+/* ---------- NEW YORK TIMES — Nov 9, 2000 ---------- */
+function tplNYTimes2000() {
+  return `
+  <div style="background:#fff; min-height:100vh; padding:0 0 80px; font-family:Georgia,'Times New Roman',serif; color:#000; font-size:12px;">
+
+    <!-- top register banner -->
+    <div style="background:#5f6b3c; color:#fff; padding:4px 10px; font-family:Arial,sans-serif; font-size:11px;">
+      <a href="${ramp('nyt-register')}" target="_blank" style="color:#fff; text-decoration:none;">&raquo; Register Now For Special Features From NYTimes.com</a>
+    </div>
+
+    <!-- Masthead -->
+    <div style="text-align:center; padding:14px 10px 8px; border-bottom:1px solid #ccc;">
+      <div style="font-family:'UnifrakturMaguntia','Old English Text MT','Times New Roman',serif; font-size:54px; line-height:1; color:#000;">The New York Times</div>
+      <div style="font-family:Arial,sans-serif; font-size:9px; letter-spacing:6px; color:#000; margin-top:2px;">ON THE WEB</div>
+    </div>
+
+    <div style="font-family:Arial,sans-serif; font-size:11px; padding:4px 10px; border-bottom:1px solid #ccc; display:flex; justify-content:space-between; flex-wrap:wrap;">
+      <span><b>THURSDAY, NOVEMBER 9, 2000</b> &nbsp; 9:24 AM ET</span>
+      <span><a href="#" style="color:#0000cc;">Personalize Your Weather</a></span>
+    </div>
+
+    <!-- 3-column table layout -->
+    <table style="width:100%; border-collapse:collapse; font-family:Georgia,serif;"><tr style="vertical-align:top;">
+
+      <!-- LEFT SIDEBAR -->
+      <td style="width:130px; background:#f0f0f0; padding:8px 6px; border-right:1px solid #ccc; font-family:Arial,sans-serif; font-size:11px;">
+
+        <!-- search -->
+        <div style="background:#fff; padding:4px; border:1px solid #ccc; margin-bottom:8px;">
+          <b style="color:#900;">SEARCH</b><br>
+          <label><input type="radio" name="ny" checked> Latest News</label><br>
+          <label><input type="radio" name="ny"> Archives</label><br>
+          <input type="text" style="width:100%; font-size:10px; margin-top:2px;">
+          <div style="margin-top:2px;"><button style="font-size:10px;">Search</button> <a href="#" style="color:#0000cc; font-size:10px;">Tips</a></div>
+        </div>
+
+        <a href="#" style="color:#0000cc;">Jobs</a> | <a href="#" style="color:#0000cc;">Real Estate</a> | <a href="#" style="color:#0000cc;">Shopping</a>
+
+        <div style="background:#003366; color:#fff; padding:3px 6px; margin:10px 0 4px; font-weight:bold;">NEWS</div>
+        <a href="#" style="color:#0000cc; display:block;">Business</a>
+        <a href="#" style="color:#0000cc; display:block;">Editorial/Op-Ed</a>
+        <a href="#" style="color:#0000cc; display:block;">International</a>
+        <a href="#" style="color:#0000cc; display:block;">National</a>
+        <a href="#" style="color:#0000cc; display:block;">New York Region</a>
+        <a href="#" style="color:#0000cc; display:block;">NYT Front Page</a>
+        <a href="#" style="color:#0000cc; display:block;">Obituaries</a>
+        <a href="#" style="color:#0000cc; display:block;">Politics</a>
+        <a href="#" style="color:#0000cc; display:block;">Quick News</a>
+        <a href="#" style="color:#0000cc; display:block;">Science/Health</a>
+        <a href="#" style="color:#0000cc; display:block;">Sports</a>
+        <a href="#" style="color:#0000cc; display:block;">Tech/Internet</a>
+        <a href="#" style="color:#0000cc; display:block;">Weather</a>
+        <div style="border-top:1px solid #ccc; margin:4px 0;"></div>
+        <a href="#" style="color:#0000cc; display:block;">Corrections</a>
+
+        <div style="background:#003366; color:#fff; padding:3px 6px; margin:10px 0 4px; font-weight:bold;">FEATURES</div>
+        <a href="#" style="color:#0000cc;">Arts</a> | <a href="#" style="color:#0000cc;">Books</a> | <a href="#" style="color:#0000cc;">Cartoons</a> | <a href="#" style="color:#0000cc;">Crossword</a> | <a href="#" style="color:#0000cc;">Forums</a> | <a href="#" style="color:#0000cc;">Magazine</a> | <a href="#" style="color:#0000cc;">Travel</a>
+
+        <div style="background:#003366; color:#fff; padding:3px 6px; margin:10px 0 4px; font-weight:bold;">SERVICES</div>
+        <a href="#" style="color:#0000cc;">Archives</a> | <a href="#" style="color:#0000cc;">Classifieds</a> | <a href="#" style="color:#0000cc;">Help</a> | <a href="#" style="color:#0000cc;">NYT Store</a> | <a href="#" style="color:#0000cc;">Site Index</a>
+
+        <!-- Ramp ad #1: a small sidebar text link, blends with shopping section -->
+        <div style="background:#003366; color:#fff; padding:3px 6px; margin:10px 0 4px; font-weight:bold;">SHOPPING</div>
+        <a href="#" style="color:#0000cc; display:block;">Wine</a>
+        <a href="#" style="color:#0000cc; display:block;">Jewelry</a>
+        <a href="#" style="color:#0000cc; display:block;">Travel</a>
+        <a href="${ramp('nyt-shopping')}" target="_blank" style="color:#cc0000; display:block; font-weight:bold;">Corporate Cards (NEW!)</a>
+
+      </td>
+
+      <!-- MIDDLE: LEAD STORIES -->
+      <td style="padding:10px 14px; vertical-align:top;">
+
+        <h1 style="font-family:Georgia,serif; font-size:22px; line-height:1.15; margin:0 0 6px; color:#003366; font-weight:bold;">
+          <a href="#" style="color:#003366; text-decoration:none;">Bush Barely Ahead of Gore In Florida; Recount Holds Key</a>
+        </h1>
+
+        <!-- ASCII-ish pixel "photo" placeholder (Florida recount workers) -->
+        <div style="width:100%; max-width:340px; height:130px; background:linear-gradient(180deg,#999 0 30%,#ccc 30% 60%,#888 60% 100%); border:1px solid #666; position:relative; margin:6px 0;">
+          <div style="position:absolute; bottom:2px; left:4px; right:4px; background:#000c; color:#fff; font-family:Arial; font-size:10px; padding:2px 4px;">Election workers in Miami-Dade County recount ballots Wednesday. (AFP)</div>
+        </div>
+
+        <div style="font-family:Arial,sans-serif; font-size:10px; color:#666;">By <b>RICHARD L. BERKE</b> &nbsp;|&nbsp; <i>FROM THURSDAY&apos;S TIMES</i></div>
+        <p style="margin:6px 0 4px; line-height:1.5;">For the first time in more than a century, the winner of a presidential election remained unknown a full day after the polls closed. <a href="#" style="color:#0000cc;">[Go to Article]</a></p>
+
+        <ul style="margin:4px 0 12px 18px; padding:0; font-family:Arial,sans-serif; font-size:11px; line-height:1.6;">
+          <li><a href="#" style="color:#0000cc;">Florida Recount Cuts Bush&apos;s Lead in Half</a></li>
+          <li><a href="#" style="color:#0000cc;">News Analysis: Recipe for a Stalemate</a></li>
+          <li><a href="#" style="color:#0000cc;">Florida Democrats Say Ballot&apos;s Design Hurt Gore</a></li>
+        </ul>
+
+        <h2 style="font-family:Georgia,serif; font-size:17px; margin:14px 0 4px; color:#003366;">
+          <a href="#" style="color:#003366; text-decoration:none;">G.O.P. Clings to Control in Congress, but Democrats Gain in Both Chambers</a>
+        </h2>
+        <div style="font-family:Arial,sans-serif; font-size:10px; color:#666;">By <b>ADAM CLYMER</b></div>
+        <ul style="margin:4px 0 12px 18px; padding:0; font-family:Arial,sans-serif; font-size:11px; line-height:1.6;">
+          <li><a href="#" style="color:#0000cc;">Democrats Gain Several Senate Seats</a></li>
+          <li><a href="#" style="color:#0000cc;">G.O.P. Gains a Future Edge in Districting</a></li>
+        </ul>
+
+        <!-- Ramp ad #2: a 468x60-style banner, era-correct rendering -->
+        <div style="border-top:1px solid #ccc; border-bottom:1px solid #ccc; padding:6px 0; margin:14px 0; text-align:center;">
+          <a href="${ramp('nyt-banner')}" target="_blank" style="display:inline-block; text-decoration:none;">
+            <div style="width:468px; max-width:100%; height:60px; background:linear-gradient(90deg,#1a3a6c 0%,#2c5aa0 100%); color:#fff; font-family:Arial,sans-serif; padding:8px 12px; box-sizing:border-box; text-align:left; border:1px solid #000;">
+              <div style="font-size:16px; font-weight:bold; color:#ffd700;">Ramp.com</div>
+              <div style="font-size:11px; line-height:1.2; margin-top:2px;">The Corporate Card &amp; Spend Management Platform.<br>Now Y2K Compliant. <span style="color:#ffd700;"><u>Click Here &raquo;</u></span></div>
+            </div>
+          </a>
+        </div>
+
+        <h3 style="font-family:Arial,sans-serif; font-size:11px; color:#cc0000; font-weight:bold; margin:14px 0 2px; letter-spacing:1px;">INTERNATIONAL</h3>
+        <a href="#" style="color:#003366; font-family:Georgia,serif; font-size:14px; font-weight:bold; text-decoration:none;">Violence Flares as Arafat Arrives in U.S. for Peace Talks</a>
+        <span style="color:#666; font-family:Arial; font-size:10px;"> (7:24 a.m.)</span>
+
+        <h3 style="font-family:Arial,sans-serif; font-size:11px; color:#cc0000; font-weight:bold; margin:14px 0 2px; letter-spacing:1px;">POLITICS</h3>
+        <a href="#" style="color:#003366; font-family:Georgia,serif; font-size:14px; font-weight:bold; text-decoration:none;">First Lady Emerges From Shadow and Begins to Cast Her Own</a>
+        <span style="color:#666; font-family:Arial; font-size:10px;"> (2:53 a.m.)</span>
+
+        <h3 style="font-family:Arial,sans-serif; font-size:11px; color:#cc0000; font-weight:bold; margin:14px 0 2px; letter-spacing:1px;">BUSINESS</h3>
+        <a href="${ramp('nyt-business-headline')}" target="_blank" style="color:#003366; font-family:Georgia,serif; font-size:14px; font-weight:bold; text-decoration:none;">Companies Switching to Ramp Close Books 8x Faster, Study Finds</a>
+        <span style="color:#666; font-family:Arial; font-size:10px;"> (6:10 a.m.)</span>
+
+        <h3 style="font-family:Arial,sans-serif; font-size:11px; color:#cc0000; font-weight:bold; margin:14px 0 2px; letter-spacing:1px;">N.Y. REGION</h3>
+        <a href="#" style="color:#003366; font-family:Georgia,serif; font-size:14px; font-weight:bold; text-decoration:none;">U.S. Plans a Lottery System to Cut La Guardia Flights</a>
+        <span style="color:#666; font-family:Arial; font-size:10px;"> (2:08 a.m.)</span>
+
+        <!-- Election 2000 navy box -->
+        <div style="margin-top:16px;">
+          <div style="background:#003366; color:#fff; padding:4px 8px; font-family:Arial,sans-serif; font-weight:bold;">THE 2000 ELECTION</div>
+          <div style="border:1px solid #003366; padding:8px; font-family:Arial,sans-serif; font-size:11px;">
+            <b>Election Features:</b>
+            <ul style="margin:4px 0 0 18px; padding:0; line-height:1.6;">
+              <li><a href="#" style="color:#0000cc;">Complete Election Results</a></li>
+              <li><a href="#" style="color:#0000cc;">How the Results Are Collected and Projected</a></li>
+              <li><a href="#" style="color:#0000cc;">E-mail Updates</a></li>
+              <li><a href="#" style="color:#0000cc;">Discuss the Election</a></li>
+            </ul>
+            <div style="margin-top:8px; border-top:1px solid #003366; padding-top:6px;">
+              <b>RESULTS &mdash; PRESIDENT (as of 9:24 a.m.)</b>
+              <table style="width:100%; font-size:10px; margin-top:4px;">
+                <tr style="background:#ddd;"><td></td><td><b>Electoral</b></td><td><b>Popular Vote</b></td><td></td></tr>
+                <tr><td><b>Gore</b></td><td>255</td><td>48,707,413</td><td>48%</td></tr>
+                <tr><td><b>Bush</b></td><td>246</td><td>48,609,640</td><td>48%</td></tr>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </td>
+
+      <!-- RIGHT COLUMN -->
+      <td style="width:200px; padding:10px 10px 10px 0; vertical-align:top; font-family:Arial,sans-serif; font-size:11px;">
+
+        <div style="background:#003366; color:#fff; padding:3px 6px; font-weight:bold;">INSIDE</div>
+        <div style="border:1px solid #003366; padding:6px; border-top:0;">
+          <b style="color:#cc0000;">CIRCUITS</b><br>
+          <a href="#" style="color:#003366; font-weight:bold;">A New M.I.T. Media Lab</a>
+          <p style="margin:4px 0 0; color:#000; font-size:11px;">Walter Bender takes over an institution where re-invention is constant.</p>
+        </div>
+
+        <div style="background:#003366; color:#fff; padding:3px 6px; font-weight:bold; margin-top:10px;">MARKETS</div>
+        <table style="width:100%; border-collapse:collapse; border:1px solid #003366; border-top:0; font-size:10px;">
+          <tr><td colspan="3" style="padding:3px 6px;"><i>At Close</i></td></tr>
+          <tr><td style="padding:2px 6px;">Dow</td><td style="text-align:right;">10907.06</td><td style="color:#c00; text-align:right;">&#9660; -45.12</td></tr>
+          <tr style="background:#f0f0f0;"><td style="padding:2px 6px;">Nasdaq</td><td style="text-align:right;">3231.70</td><td style="color:#c00; text-align:right;">&#9660; -184.09</td></tr>
+          <tr><td style="padding:2px 6px;">S&amp;P 500</td><td style="text-align:right;">1409.28</td><td style="color:#c00; text-align:right;">&#9660; -22.59</td></tr>
+          <tr style="background:#f0f0f0;"><td style="padding:2px 6px;">Russell 2000</td><td style="text-align:right;">500.68</td><td style="color:#c00; text-align:right;">&#9660; -5.33</td></tr>
+        </table>
+
+        <!-- Ramp ad #3: a small 200px sidebar "skyscraper" -->
+        <div style="margin-top:12px; border:1px solid #ccc; padding:8px; background:#fffbe0;">
+          <div style="font-family:Arial; font-size:9px; color:#666; text-transform:uppercase; letter-spacing:1px;">Advertisement</div>
+          <div style="font-family:Georgia,serif; font-size:14px; font-weight:bold; color:#000; margin-top:4px;">Tired of expense reports?</div>
+          <p style="margin:4px 0; font-size:11px; line-height:1.4;">Get <a href="${ramp('nyt-sidebar')}" target="_blank" style="color:#0000cc;"><b>Ramp.com</b></a> &mdash; the corporate card that auto-codes your transactions while you sleep.</p>
+          <a href="${ramp('nyt-sidebar-cta')}" target="_blank" style="font-size:11px; color:#0000cc;">Learn More &raquo;</a>
+        </div>
+
+        <div style="background:#003366; color:#fff; padding:3px 6px; font-weight:bold; margin-top:12px;">LATEST AP / REUTERS</div>
+        <div style="border:1px solid #003366; padding:6px; border-top:0; font-size:11px; line-height:1.5;">
+          <a href="#" style="color:#003366;">Dow Sinks on Election Uncertainty</a> <span style="color:#666;">9:18 a.m.</span><br>
+          <a href="#" style="color:#003366;">Florida Recount Continues</a> <span style="color:#666;">9:02 a.m.</span><br>
+          <a href="${ramp('nyt-wire')}" target="_blank" style="color:#003366;">Ramp.com Raises Series B</a> <span style="color:#666;">8:47 a.m.</span><br>
+          <a href="#" style="color:#003366;">Mideast Tensions Escalate</a> <span style="color:#666;">8:30 a.m.</span>
+        </div>
+
+      </td>
+    </tr></table>
+
+    <div style="text-align:center; padding:14px; font-family:Arial,sans-serif; font-size:11px; color:#666; border-top:1px solid #ccc;">
+      Copyright 2000 The New York Times Company &nbsp;|&nbsp;
+      <a href="#" style="color:#0000cc;">Privacy Information</a>
+      <div style="margin-top:8px;"><button data-restart style="background:#ececec; border:1px solid #999; padding:2px 10px; font-family:Arial; font-size:11px;">[Y2K-ify another site]</button></div>
+    </div>
+  </div>`;
+}
+
+/* ---------- APPLE — Mar 1, 2000 ---------- */
+function tplApple2000() {
+  const tab = (label, active) => `
+    <div style="display:inline-block; padding:6px 18px; margin:0 1px; font-family:'Lucida Grande','Helvetica Neue',Arial,sans-serif; font-size:11px; color:#333;
+                background:${active ? 'linear-gradient(180deg,#fff 0%,#dcdcdc 100%)' : 'linear-gradient(180deg,#f3f3f3 0%,#bababa 100%)'};
+                border:1px solid #888; border-bottom:0; border-radius:8px 8px 0 0;
+                box-shadow: inset 0 1px 0 #fff;">${label}</div>`;
+  return `
+  <div style="background:#fff; min-height:100vh; padding:0 0 80px; font-family:'Lucida Grande','Helvetica Neue',Arial,sans-serif; color:#000;">
+
+    <!-- top nav: primary tabs -->
+    <div style="background:#e6e6e6; padding:8px 20px 0; border-bottom:1px solid #888;">
+      <div style="max-width:980px; margin:0 auto; display:flex; align-items:flex-end; gap:0;">
+        <!-- rainbow apple icon tab -->
+        <div style="display:inline-block; padding:4px 12px 3px; background:linear-gradient(180deg,#fff,#dcdcdc); border:1px solid #888; border-bottom:0; border-radius:8px 8px 0 0; vertical-align:bottom;">
+          <svg width="16" height="18" viewBox="0 0 60 70" style="display:block;" aria-label="Apple">
+            <defs>
+              <clipPath id="appleShape">
+                <path d="M44,18 C50,18 56,23 56,32 C56,45 48,62 38,62 C33,62 31,59 28,59 C25,59 22,62 18,62 C8,62 0,45 0,32 C0,23 6,18 12,18 C16,18 19,21 22,21 C25,21 27,18 32,18 C35,18 40,18 44,18 Z M34,12 C36,8 40,5 44,5 C44,9 42,13 39,15 C37,17 33,18 30,17 C30,15 32,13 34,12 Z"/>
+              </clipPath>
+            </defs>
+            <g clip-path="url(#appleShape)">
+              <rect x="0" y="0"  width="60" height="10" fill="#62bb46"/>
+              <rect x="0" y="10" width="60" height="10" fill="#fcb711"/>
+              <rect x="0" y="20" width="60" height="10" fill="#f37021"/>
+              <rect x="0" y="30" width="60" height="10" fill="#ef4136"/>
+              <rect x="0" y="40" width="60" height="10" fill="#b13692"/>
+              <rect x="0" y="50" width="60" height="20" fill="#0089d0"/>
+            </g>
+          </svg>
+        </div>
+        ${tab('Store')}
+        ${tab('iReview')}
+        ${tab('iTools')}
+        ${tab('iCards')}
+        ${tab('QuickTime')}
+        ${tab('Support')}
+      </div>
+    </div>
+
+    <!-- secondary nav -->
+    <div style="background:#dcdcdc; padding:5px 20px; border-bottom:1px solid #888;">
+      <div style="max-width:980px; margin:0 auto; text-align:center; font-family:'Lucida Grande',Arial,sans-serif; font-size:11px;">
+        <a href="#" style="color:#003399; margin:0 6px;">Hot News</a> |
+        <a href="${ramp('apple-hiring')}" target="_blank" style="color:#003399; margin:0 6px;">Hiring</a> |
+        <a href="#" style="color:#003399; margin:0 6px;">Hardware</a> |
+        <a href="#" style="color:#003399; margin:0 6px;">Software</a> |
+        <a href="#" style="color:#003399; margin:0 6px;">Made4Mac</a> |
+        <a href="#" style="color:#003399; margin:0 6px;">Education</a> |
+        <a href="#" style="color:#003399; margin:0 6px;">Creative</a> |
+        <a href="#" style="color:#003399; margin:0 6px;">Small Biz</a> |
+        <a href="#" style="color:#003399; margin:0 6px;">Developer</a>
+      </div>
+    </div>
+
+    <!-- HERO -->
+    <div style="max-width:980px; margin:0 auto; padding:24px 20px;">
+
+      <!-- Apple wordmark, serif -->
+      <div style="font-family:'Garamond','Times New Roman',serif; font-size:88px; line-height:1; color:#000; margin-bottom:24px; letter-spacing:-1px;">Apple</div>
+
+      <!-- hero area: clamshell iBook + tagline -->
+      <div style="display:flex; align-items:center; gap:30px; flex-wrap:wrap; padding:20px 0; border-top:1px solid #ccc; border-bottom:1px solid #ccc;">
+        <div style="flex:1; min-width:240px;">
+          <div style="font-family:'Garamond','Times New Roman',serif; font-size:54px; line-height:1; color:#444;">iBook.</div>
+          <div style="font-family:'Garamond','Times New Roman',serif; font-size:30px; line-height:1.2; color:#888; margin-top:6px; font-style:italic;">Black tie optional.</div>
+          <div style="margin-top:18px; font-family:'Lucida Grande',Arial,sans-serif; font-size:11px; color:#666;">March 01, 2000  01:53 PM PST</div>
+        </div>
+        <!-- CSS clamshell iBook (graphite edition) -->
+        <div style="flex:1; min-width:240px; display:flex; justify-content:center;">
+          <div style="position:relative; width:260px; height:180px;">
+            <!-- lid (clamshell top) -->
+            <div style="position:absolute; left:20px; top:10px; width:220px; height:140px;
+                        background:linear-gradient(135deg,#3a3a4a 0%,#1a1a2a 60%,#0a0a18 100%);
+                        border-radius:38px 38px 28px 28px;
+                        box-shadow:inset 2px 2px 0 #5a5a6a, 0 8px 20px #00000060;">
+              <!-- handle on top -->
+              <div style="position:absolute; left:50%; top:-6px; transform:translateX(-50%); width:80px; height:14px; background:linear-gradient(180deg,#222 0%,#000 100%); border-radius:6px 6px 0 0;"></div>
+              <!-- subtle reflection -->
+              <div style="position:absolute; left:24px; top:18px; right:24px; height:40px; background:linear-gradient(180deg,#ffffff15,transparent); border-radius:20px 20px 0 0;"></div>
+            </div>
+            <!-- base -->
+            <div style="position:absolute; left:8px; top:140px; width:244px; height:24px;
+                        background:linear-gradient(180deg,#2a2a3a 0%,#0a0a18 100%); border-radius:0 0 14px 14px; box-shadow:0 4px 6px #00000040;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Hot News Headlines ticker (with Ramp salted in) -->
+      <div style="background:#6b6b3b; color:#fff; padding:4px 10px; margin-top:14px; font-family:Arial,sans-serif; font-size:11px; display:flex; align-items:center; gap:10px;">
+        <span style="background:#000; padding:2px 6px; font-weight:bold;">Hot News Headlines</span>
+        <marquee scrollamount="4" style="flex:1;">Apple Increases Share in Growing Japan Market. &nbsp;&bull;&nbsp; iBook Graphite Now Shipping. &nbsp;&bull;&nbsp; <a href="${ramp('apple-marquee')}" target="_blank" style="color:#ffd700;">Apple Finance Teams Switching to Ramp.com to Manage Spend.</a> &nbsp;&bull;&nbsp; QuickTime 5 Coming Soon.</marquee>
+      </div>
+
+      <!-- 3-product grid -->
+      <table style="width:100%; margin-top:24px; border-collapse:separate; border-spacing:14px 0;"><tr style="vertical-align:top;">
+
+        <td style="width:33%; text-align:center;">
+          <!-- Power Mac G4 (gray monolith) -->
+          <div style="height:120px; display:flex; align-items:flex-end; justify-content:center;">
+            <div style="width:60px; height:110px; background:linear-gradient(180deg,#d4d4d4 0%,#a8a8a8 100%); border:1px solid #888; border-radius:4px; box-shadow:inset 2px 0 0 #ededed, 2px 2px 6px #00000020;"></div>
+          </div>
+          <div style="font-family:'Lucida Grande',Arial,sans-serif; font-size:12px; margin-top:8px;"><a href="#" style="color:#003399; font-weight:bold;">Power Mac G4</a></div>
+          <div style="font-family:'Garamond',serif; font-size:13px; color:#666; font-style:italic; margin-top:2px;">Supercomputer. Personal.</div>
+        </td>
+
+        <td style="width:33%; text-align:center;">
+          <!-- PowerBook (titanium dark slab) -->
+          <div style="height:120px; display:flex; align-items:center; justify-content:center;">
+            <div style="position:relative; width:160px; height:90px;">
+              <div style="position:absolute; inset:0; background:linear-gradient(180deg,#888 0%,#444 100%); border-radius:6px;"></div>
+              <div style="position:absolute; left:6px; top:6px; right:6px; bottom:30px; background:#1a2a4a;"></div>
+              <div style="position:absolute; left:0; right:0; bottom:0; height:4px; background:#222;"></div>
+            </div>
+          </div>
+          <div style="font-family:'Lucida Grande',Arial,sans-serif; font-size:12px; margin-top:8px;"><a href="#" style="color:#003399; font-weight:bold;">The new PowerBook.</a></div>
+          <div style="font-family:'Garamond',serif; font-size:13px; color:#666; font-style:italic; margin-top:2px;">Make desktop movies on the go.</div>
+        </td>
+
+        <td style="width:33%; text-align:center;">
+          <!-- Ramp ad slotted in as if it were the EarthLink partner ad -->
+          <div style="height:120px; display:flex; align-items:center; justify-content:center;">
+            <a href="${ramp('apple-partner')}" target="_blank" style="text-decoration:none; color:inherit;">
+              <div style="width:90px; height:90px; border-radius:50%; background:radial-gradient(circle at 35% 35%,#ffd700 0%,#cc9900 60%,#665500 100%); border:2px solid #000; display:flex; align-items:center; justify-content:center; font-family:Arial,sans-serif; font-weight:bold; color:#000; font-size:10px; text-align:center; line-height:1.1; box-shadow:2px 2px 6px #00000040;">
+                RAMP<br>FOR<br>MAC
+              </div>
+            </a>
+          </div>
+          <div style="font-family:'Lucida Grande',Arial,sans-serif; font-size:12px; margin-top:8px;"><a href="${ramp('apple-partner-cta')}" target="_blank" style="color:#003399; font-weight:bold;">Ramp&trade;</a></div>
+          <div style="font-family:'Garamond',serif; font-size:13px; color:#666; font-style:italic; margin-top:2px;">The award-winning corporate card for Mac.</div>
+        </td>
+
+      </tr></table>
+
+      <!-- search + footer links -->
+      <div style="margin-top:30px; padding-top:14px; border-top:1px solid #ccc; font-family:'Lucida Grande',Arial,sans-serif; font-size:11px; color:#666; display:flex; gap:14px; flex-wrap:wrap; align-items:center;">
+        <input type="text" style="font-family:Arial; font-size:11px; padding:2px 4px; border:1px solid #888; width:180px;">
+        <button style="font-family:Arial; font-size:11px; padding:1px 10px; border:1px solid #888; background:#ededed;">Search</button>
+        <span><a href="#" style="color:#003399;">Site Map</a> | <a href="#" style="color:#003399;">Search Tips</a> | <a href="#" style="color:#003399;">Options</a> | <a href="#" style="color:#003399;">Keywords</a></span>
+      </div>
+
+      <div style="margin-top:18px; font-family:'Lucida Grande',Arial,sans-serif; font-size:11px; color:#666; text-align:center;">
+        Visit other Apple sites around the world:
+        <select style="font-family:Arial; font-size:11px;"><option>Choose...</option><option>USA</option><option>Japan</option><option>UK</option></select>
+        <br><br>
+        <a href="#" style="color:#003399;">Contact Us</a> | <a href="#" style="color:#003399;">Privacy Notice</a><br>
+        Copyright &copy; 2000 Apple Computer, Inc. All rights reserved.<br>
+        1-800-MY-APPLE
+        <div style="margin-top:14px;"><button data-restart style="background:#ededed; border:1px solid #888; padding:2px 10px; font-family:Arial; font-size:11px;">[Y2K-ify another site]</button></div>
+      </div>
+    </div>
+  </div>`;
 }
