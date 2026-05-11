@@ -622,9 +622,9 @@ function rampPopupReSpawn(medium) {
       <span>&#9888; WAIT!!</span>
       <span style="cursor:pointer;" onclick="this.parentElement.parentElement.style.display='none'">&times;</span>
     </div>
-    <div style="padding:8px;">
-      <p style="margin:0 0 6px;">Before you go!!</p>
-      <p style="margin:0 0 6px; font-size:11px;">Switch to <a href="${ramp(medium)}" target="_blank" style="color:#0000ee;"><b>Ramp</b></a> and save <b style="color:#c00;">$250K/yr</b>!</p>
+    <div style="padding:8px; color:#000;">
+      <p style="margin:0 0 6px; color:#000;">Before you go!!</p>
+      <p style="margin:0 0 6px; font-size:11px; color:#000;">Switch to <a href="${ramp(medium)}" target="_blank" style="color:#0000ee;"><b>Ramp</b></a> and save <b style="color:#c00;">$250K/yr</b>!</p>
       <div style="text-align:center;"><a href="${ramp(medium)}" target="_blank" style="background:linear-gradient(180deg,#ffff00,#ff8800); border:2px outset #ffff00; padding:2px 10px; color:#000; text-decoration:none; font-weight:bold;">CLAIM &raquo;</a></div>
     </div>
   </div>`;
@@ -820,9 +820,14 @@ function tpl2Advanced(d) {
         <span>LAT: 40.7128 N</span><span>LONG: 74.0060 W</span><span>BITRATE: 56,600 bps</span><span>UPTIME: 100%</span><span>// ${d.domain}</span>
       </div>
 
-      <!-- ramp ribbon ad -->
-      <div style="margin-top:30px;">
-        ${rampBanner468('2adv-bottom')}
+      <!-- ramp banner ad, palette-matched to 2Advanced -->
+      <div style="margin-top:30px; border:1px solid #2080ff; background:linear-gradient(90deg,#0a2540 0%,#0a2540 60%,#0e3870 100%); padding:14px 20px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+        <div style="color:#ffd700; font-size:9px; letter-spacing:3px;">// AD_FRAME_002.SWF</div>
+        <div style="flex:1; min-width:200px; color:#9fcfff; font-size:12px; text-align:center;">
+          <span style="color:#ffffff; font-family:'Arial Black',sans-serif; letter-spacing:2px;">RAMP&trade;</span>
+          <span style="color:#9fcfff;"> &nbsp;//&nbsp; corporate cards for the next/generation of business </span>
+        </div>
+        <a href="${ramp('2adv-bottom')}" target="_blank" style="color:#ffd700; text-decoration:none; font-family:'Courier New',monospace; font-size:11px; letter-spacing:2px; border:1px solid #ffd700; padding:4px 12px;">&raquo; LEARN_MORE</a>
       </div>
 
       <!-- requires shockwave fake disclaimer -->
