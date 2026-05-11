@@ -309,8 +309,13 @@
   }
   .ie5-content .ex-btn:hover { background: linear-gradient(180deg, #ff00ff, #ff80ff); }
   .ie5-content .footer-note { font-size: 11px; color: #808080; margin-top: 22px; font-family: "Arial"; }
-  .ie5-content .counter-line { text-align: center; margin-top: 14px; font-size: 11px; color: #808080; font-family: "Arial"; }
-  .ie5-content #home-counter { font-family: "Courier New", monospace; color: #000; }
+  .ie5-stage .desktop-counter {
+    position: absolute; left: 0; right: 0; bottom: 18px;
+    text-align: center; margin: 0;
+    font-size: 11px; color: #c0ffff; font-family: "Arial", sans-serif;
+    text-shadow: 1px 1px 0 #004040;
+  }
+  .ie5-stage #home-counter { font-family: "Courier New", monospace; color: #fff; }
   .ie5-content .footer-note a { color: #0000ee; }
   .ie5-statusbar {
     background: #c0c0c0; border-top: 1px solid #fff;
@@ -446,13 +451,13 @@
       <p class="footer-note">
         Brought to you by <a href="https://ramp.com/?rc=6S7S4B&amp;referral_location=referral_page&amp;utm_source=y2kmysite&amp;utm_medium=footer&amp;utm_campaign=stunt" target="_blank"><b>Ramp.com</b></a>, because your finance software should be better than it was in 1999. Best viewed in Netscape&reg; Navigator 4 or Internet Explorer 5 at 800&times;600.
       </p>
-      <p class="counter-line"><span id="home-counter" aria-live="polite">000000007</span> websites Y2K-ified</p>
     </div>
     <div class="ie5-statusbar">
       <span>Done</span>
       <span style="color:#000080;">&#128274; Internet Zone</span>
     </div>
   </div>
+  <p class="desktop-counter"><span id="home-counter" aria-live="polite">000000007</span> websites Y2K-ified</p>
 </div>
 
 <!-- =================== DIALING OVERLAY =================== -->
