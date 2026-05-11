@@ -982,7 +982,24 @@ document.addEventListener('DOMContentLoaded', () => {
     inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') goY2K(); });
     setTimeout(() => inp.focus(), 100);
   }
+  // Load homepage hit counter (read-only — increment happens on Y2K-ify)
+  loadHomeCounter();
 });
+
+// Read the live count without incrementing
+function loadHomeCounter() {
+  const el = document.getElementById('home-counter');
+  if (!el) return;
+  fetch('https://api.counterapi.dev/v1/y2kmysite/sites_generated/', { cache: 'no-store' })
+    .then(r => r.ok ? r.json() : null)
+    .then(j => {
+      if (j && typeof j.count === 'number') {
+        // Pad to 7 digits for that LCD odometer feel
+        el.textContent = String(j.count).padStart(7, '0');
+      }
+    })
+    .catch(() => {});
+}
 
 function startClock() {
   const el = document.getElementById('clock');
