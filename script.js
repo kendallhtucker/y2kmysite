@@ -648,10 +648,11 @@ function aolCdFloater(medium) {
 
 function rampPopupReSpawn(medium) {
   // small in-page "popup" embedded into the site (not a true window)
-  return `<div style="position:fixed; bottom:50px; right:12px; z-index:5000; width:240px; background:#c0c0c0; border:2px outset #c0c0c0; box-shadow:3px 3px 0 #00000060; font-family:Tahoma; font-size:12px;">
+  // narrower on mobile so it doesn't cover CTAs
+  return `<div class="ramp-respawn" style="position:fixed; bottom:50px; right:10px; z-index:5000; width:min(240px,55vw); background:#c0c0c0; border:2px outset #c0c0c0; box-shadow:3px 3px 0 #00000060; font-family:Tahoma; font-size:12px;">
     <div style="background:linear-gradient(90deg,#c00,#f00); color:#fff; padding:3px 6px; font-weight:bold; display:flex; justify-content:space-between;">
       <span>&#9888; WAIT!!</span>
-      <span style="cursor:pointer;" onclick="this.parentElement.parentElement.style.display='none'">&times;</span>
+      <span style="cursor:pointer; padding:0 6px;" onclick="this.parentElement.parentElement.style.display='none'">&times;</span>
     </div>
     <div style="padding:8px; color:#000;">
       <p style="margin:0 0 6px; color:#000;">Before you go!!</p>
@@ -1035,12 +1036,12 @@ function tplGoogle2000() {
 
     <div style="font-family:Arial,sans-serif; font-size:14px; margin-bottom:14px;">Search the web using Google!</div>
 
-    <form onsubmit="var q=this.q.value.trim();if(q){window.open('https://www.google.com/search?q='+encodeURIComponent(q),'_blank');}return false;" style="margin:0;">
+    <form action="https://www.google.com/search" method="get" target="_blank" style="margin:0;">
       <input type="text" name="q" size="55" autocomplete="off" style="font-family:Arial; font-size:14px; padding:2px 4px; border:1px solid #7e9db9; width:380px; max-width:90vw;">
       <div style="margin-top:10px; font-family:Arial,sans-serif; font-size:12px;">
         <input type="submit" value="Google Search" style="font-family:Arial; font-size:12px; padding:2px 10px; background:#ececec; border:1px solid #999; cursor:pointer;">
         &nbsp;
-        <input type="button" value="I'm Feeling Lucky" onclick="var q=this.form.q.value.trim();if(q){window.open('https://www.google.com/search?btnI=1&amp;q='+encodeURIComponent(q),'_blank');}" style="font-family:Arial; font-size:12px; padding:2px 10px; background:#ececec; border:1px solid #999; cursor:pointer;">
+        <input type="submit" name="btnI" value="I'm Feeling Lucky" style="font-family:Arial; font-size:12px; padding:2px 10px; background:#ececec; border:1px solid #999; cursor:pointer;">
       </div>
     </form>
 
@@ -1099,11 +1100,11 @@ function tplNYTimes2000() {
       <td style="width:130px; background:#f0f0f0; padding:8px 6px; border-right:1px solid #ccc; font-family:Arial,sans-serif; font-size:11px;">
 
         <!-- search -->
-        <form onsubmit="var q=this.q.value.trim();if(q){window.open('https://www.nytimes.com/search?query='+encodeURIComponent(q),'_blank');}return false;" style="background:#fff; padding:4px; border:1px solid #ccc; margin-bottom:8px; display:block;">
+        <form action="https://www.nytimes.com/search" method="get" target="_blank" style="background:#fff; padding:4px; border:1px solid #ccc; margin-bottom:8px; display:block;">
           <b style="color:#900;">SEARCH</b><br>
           <label><input type="radio" name="ny" checked> Latest News</label><br>
           <label><input type="radio" name="ny"> Archives</label><br>
-          <input type="text" name="q" autocomplete="off" style="width:100%; font-size:10px; margin-top:2px;">
+          <input type="text" name="query" autocomplete="off" style="width:100%; font-size:10px; margin-top:2px;">
           <div style="margin-top:2px;"><button type="submit" style="font-size:10px; cursor:pointer;">Search</button> <a href="https://help.nytimes.com/hc/en-us/sections/115004809527-Search" target="_blank" style="color:#0000cc; font-size:10px;">Tips</a></form>
 
         <a href="https://www.nytimes.com/section/business" target="_blank" style="color:#0000cc;">Jobs</a> | <a href="https://www.nytimes.com/section/realestate" target="_blank" style="color:#0000cc;">Real Estate</a> | <a href="https://www.nytimes.com/wirecutter/" target="_blank" style="color:#0000cc;">Shopping</a>
@@ -1401,11 +1402,11 @@ function tplApple2000() {
       </tr></table>
 
       <!-- search + footer links -->
-      <div style="margin-top:30px; padding-top:14px; border-top:1px solid #ccc; font-family:'Lucida Grande',Arial,sans-serif; font-size:11px; color:#666; display:flex; gap:14px; flex-wrap:wrap; align-items:center;">
-        <input type="text" style="font-family:Arial; font-size:11px; padding:2px 4px; border:1px solid #888; width:180px;">
-        <button style="font-family:Arial; font-size:11px; padding:1px 10px; border:1px solid #888; background:#ededed;">Search</button>
+      <form action="https://www.apple.com/us/search/" method="get" target="_blank" style="margin-top:30px; padding-top:14px; border-top:1px solid #ccc; font-family:'Lucida Grande',Arial,sans-serif; font-size:11px; color:#666; display:flex; gap:14px; flex-wrap:wrap; align-items:center;">
+        <input type="text" name="src" placeholder="Search" style="font-family:Arial; font-size:11px; padding:2px 4px; border:1px solid #888; width:180px;">
+        <button type="submit" style="font-family:Arial; font-size:11px; padding:1px 10px; border:1px solid #888; background:#ededed; cursor:pointer;">Search</button>
         <span><a href="https://www.apple.com/sitemap/" target="_blank" style="color:#003399;">Site Map</a> | <a href="https://www.apple.com/us/search/search+tips" target="_blank" style="color:#003399;">Search Tips</a> | <a href="https://www.apple.com/shop/" target="_blank" style="color:#003399;">Options</a> | <a href="https://www.apple.com/sitemap/" target="_blank" style="color:#003399;">Keywords</a></span>
-      </div>
+      </form>
 
       <div style="margin-top:18px; font-family:'Lucida Grande',Arial,sans-serif; font-size:11px; color:#666; text-align:center;">
         Visit other Apple sites around the world:
@@ -1524,7 +1525,7 @@ function tplOpenAI2000() {
               </div>
               <!-- input row (live: ASK sends question to chatgpt.com) -->
               <div style="border-top:1px solid #888; background:#d4d0c8; padding:5px;">
-                <form onsubmit="var q=this.q.value.trim();if(q){window.open('https://chatgpt.com/?q='+encodeURIComponent(q),'_blank');}return false;" style="margin:0; display:flex; gap:4px;">
+                <form action="https://chatgpt.com/" method="get" target="_blank" style="margin:0; display:flex; gap:4px;">
                   <input type="text" name="q" placeholder="Type your question here..." autocomplete="off" style="flex:1; font-family:'Courier New',monospace; font-size:12px; padding:2px 4px; border:1px inset #888;">
                   <button type="submit" style="font-family:'MS Sans Serif',sans-serif; font-size:11px; padding:2px 14px; border:2px outset #d4d0c8; background:#d4d0c8; cursor:pointer;">ASK!</button>
                 </form>
@@ -1694,7 +1695,7 @@ ${issues.map(i => `&#9474; ${i.id} &#9474; ${i.title.padEnd(44)} &#9474; ${i.pri
           </div>
 
           <!-- new issue input (live: opens linear.app) -->
-          <form onsubmit="window.open('https://linear.app/','_blank');return false;" style="margin-top:16px; display:flex; gap:6px;">
+          <form action="https://linear.app/" method="get" target="_blank" style="margin-top:16px; display:flex; gap:6px;">
             <span style="color:#0ff; padding-top:4px;">&gt;</span>
             <input type="text" placeholder="enter new issue title and press [N]EW..." autocomplete="off" style="flex:1; background:#000; color:#0f0; border:1px solid #0f0; padding:4px 6px; font-family:inherit; font-size:12px; outline:none; box-shadow:0 0 4px rgba(0,255,0,0.4) inset;">
             <button type="submit" style="background:#000; color:#ff00ff; border:1px solid #ff00ff; padding:4px 12px; font-family:inherit; font-size:12px; letter-spacing:2px; cursor:pointer;">[N]EW &raquo;</button>
