@@ -994,7 +994,7 @@ function loadHomeCounter() {
     .then(r => r.ok ? r.json() : null)
     .then(j => {
       if (j && typeof j.count === 'number') {
-        el.textContent = formatCounter(j.count);
+        el.textContent = String(j.count).padStart(9, '0');
       }
     })
     .catch(() => {});
