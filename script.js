@@ -664,7 +664,7 @@ function underConstructionGif() {
 }
 
 function footerTag() {
-  return `Brought to you by <a href="${ramp('footer-tag')}" target="_blank"><b>Ramp&trade;</b></a> &mdash; your finance software should be better than it was in 1999.`;
+  return `Brought to you by <a href="${ramp('footer-tag')}" target="_blank"><b>Ramp&trade;</b></a> &mdash; because your finance software should be better than it was in 1999.`;
 }
 
 /* ---------- TEMPLATE A: GEOCITIES / HOMER PAGE ---------- */
