@@ -413,6 +413,7 @@ const CURATED = {
   'nytimes.com': { template: 'nytimes2000', data: null },
   'apple.com':   { template: 'apple2000',   data: null },
   'stripe.com':  { template: '2advanced',   data: stripeSiteData() },
+  'openai.com':  { template: 'openai2000',  data: null },
 };
 
 // Templates available for unknown / hash-routed sites
@@ -453,6 +454,7 @@ function renderSite(domain) {
   if (template === 'google2000')      html = tplGoogle2000();
   else if (template === 'nytimes2000') html = tplNYTimes2000();
   else if (template === 'apple2000')   html = tplApple2000();
+  else if (template === 'openai2000')  html = tplOpenAI2000();
   else if (template === 'geocities')   html = tplGeocities(data);
   else if (template === '2advanced')   html = tpl2Advanced(data);
   else if (template === 'yahoo')       html = tplYahoo(data);
@@ -1369,6 +1371,189 @@ function tplApple2000() {
         Copyright &copy; 2000 Apple Computer, Inc. All rights reserved.<br>
         1-800-MY-APPLE
         <div style="margin-top:14px;"><button data-restart style="background:#ededed; border:1px solid #888; padding:2px 10px; font-family:Arial; font-size:11px;">[Y2K-ify another site]</button></div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ============================================================
+// OPENAI.COM — re-imagined as a 1999 AI lab
+// concept: "Ask Jeeves" meets Microsoft Bob meets MIT Media Lab
+// palette: beige Win95 chrome + lab-coat white + IBM blue accent
+// ============================================================
+function tplOpenAI2000() {
+  return `
+  <div style="background:#d4d0c8; min-height:100vh; padding:0 0 80px; font-family:'MS Sans Serif','Tahoma',Geneva,sans-serif; color:#000;">
+
+    <!-- Win95-style title bar -->
+    <div style="background:linear-gradient(90deg,#000080 0%,#1084d0 100%); color:#fff; padding:3px 6px; font-weight:bold; font-size:12px; display:flex; justify-content:space-between; align-items:center;">
+      <span>&#9881; OPENAI.COM &mdash; A.I. RESEARCH LABORATORY [Microsoft Internet Explorer 5]</span>
+      <span style="font-family:'Marlett',sans-serif;">_ &#9633; &times;</span>
+    </div>
+
+    <!-- IE-style menu bar -->
+    <div style="background:#d4d0c8; border-bottom:1px solid #808080; padding:2px 8px; font-size:11px;">
+      <span style="margin-right:14px;"><u>F</u>ile</span>
+      <span style="margin-right:14px;"><u>E</u>dit</span>
+      <span style="margin-right:14px;"><u>V</u>iew</span>
+      <span style="margin-right:14px;"><u>F</u>avorites</span>
+      <span style="margin-right:14px;"><u>T</u>ools</span>
+      <span><u>H</u>elp</span>
+    </div>
+
+    <!-- main page area -->
+    <div style="max-width:880px; margin:0 auto; padding:24px 20px 0; background:#fffff0; border-left:1px solid #888; border-right:1px solid #888;">
+
+      <!-- Header w/ wordmark + robot mascot -->
+      <table cellpadding="0" cellspacing="0" border="0" style="width:100%; margin-bottom:8px;">
+        <tr>
+          <td style="vertical-align:middle;">
+            <!-- "OpenAI" wordmark, lab-coat science-y -->
+            <div style="font-family:'Courier New','Courier',monospace; font-size:48px; color:#003366; letter-spacing:-2px; font-weight:bold;">
+              Open<span style="color:#cc0000;">A</span><span style="color:#009900;">I</span>.com
+            </div>
+            <div style="font-family:'Times New Roman',Times,serif; font-style:italic; font-size:14px; color:#444; margin-top:2px;">
+              &mdash; The world's most advanced artificial intelligence laboratory* &mdash;
+            </div>
+            <div style="font-size:9px; color:#666; margin-top:2px;">*on the world wide web</div>
+          </td>
+          <td style="width:140px; vertical-align:top; text-align:right;">
+            <!-- robot mascot SVG -->
+            <svg width="120" height="140" viewBox="0 0 120 140" aria-label="OpenAI mascot">
+              <!-- antenna -->
+              <line x1="60" y1="6" x2="60" y2="20" stroke="#888" stroke-width="2"/>
+              <circle cx="60" cy="6" r="4" fill="#cc0000"/>
+              <!-- head -->
+              <rect x="28" y="20" width="64" height="48" rx="6" fill="#c0c0c0" stroke="#444" stroke-width="2"/>
+              <!-- screen face -->
+              <rect x="34" y="26" width="52" height="36" fill="#003366" stroke="#222" stroke-width="1"/>
+              <!-- eyes -->
+              <circle cx="48" cy="42" r="5" fill="#00ff66"/>
+              <circle cx="72" cy="42" r="5" fill="#00ff66"/>
+              <circle cx="48" cy="42" r="2" fill="#003300"/>
+              <circle cx="72" cy="42" r="2" fill="#003300"/>
+              <!-- smile -->
+              <path d="M44 52 Q60 60 76 52" stroke="#00ff66" stroke-width="2" fill="none" stroke-linecap="round"/>
+              <!-- neck -->
+              <rect x="52" y="68" width="16" height="6" fill="#888"/>
+              <!-- body -->
+              <rect x="22" y="74" width="76" height="50" rx="4" fill="#d4d0c8" stroke="#444" stroke-width="2"/>
+              <!-- chest panel -->
+              <rect x="32" y="82" width="56" height="20" fill="#000"/>
+              <text x="60" y="96" text-anchor="middle" font-family="monospace" font-size="9" fill="#00ff66">A.I. v1.99</text>
+              <!-- buttons -->
+              <circle cx="38" cy="112" r="3" fill="#ff0000"/>
+              <circle cx="50" cy="112" r="3" fill="#ffcc00"/>
+              <circle cx="62" cy="112" r="3" fill="#00cc00"/>
+              <!-- arms -->
+              <rect x="14" y="80" width="8" height="32" fill="#c0c0c0" stroke="#444"/>
+              <rect x="98" y="80" width="8" height="32" fill="#c0c0c0" stroke="#444"/>
+            </svg>
+          </td>
+        </tr>
+      </table>
+
+      <!-- counter / "you are visitor" bar -->
+      <div style="background:#000; color:#0f0; font-family:'Courier New',monospace; font-size:11px; padding:4px 10px; margin-bottom:14px; border:1px inset #888; text-align:center;">
+        YOU ARE VISITOR &nbsp; <span style="background:#fff; color:#000; padding:1px 4px;">0&#8203;0&#8203;3&#8203;,&#8203;3&#8203;3&#8203;1</span> &nbsp; TO THE WORLD&apos;S FIRST A.I. ON THE INTERNET
+      </div>
+
+      <!-- two-column main: chat demo + sidebar -->
+      <table cellpadding="0" cellspacing="0" border="0" style="width:100%; margin-bottom:18px;">
+        <tr>
+          <!-- LEFT: the "computer" chat demo -->
+          <td style="width:62%; vertical-align:top; padding-right:14px;">
+            <h2 style="font-family:'Times New Roman',serif; font-size:22px; color:#003366; margin:0 0 4px;">Have a CONVERSATION with the Computer!</h2>
+            <p style="font-size:12px; margin:0 0 10px; color:#222;">Our patented A.I. uses <b>over 4,500</b> rules of grammar and logic to understand <i>almost any</i> question you type. Try it below!</p>
+
+            <!-- the fake chatbot window -->
+            <div style="border:2px inset #c0c0c0; background:#fff; padding:0;">
+              <!-- chat window title bar -->
+              <div style="background:linear-gradient(90deg,#000080,#1084d0); color:#fff; font-size:11px; font-weight:bold; padding:2px 6px;">A.I. CHAT &mdash; v1.99 beta</div>
+              <div style="padding:10px 12px; font-family:'Courier New',monospace; font-size:12px; color:#000; min-height:160px;">
+                <div style="margin-bottom:6px;"><b style="color:#003366;">COMPUTER&gt;</b> Hello! I am the COMPUTER. Please ask me a question.</div>
+                <div style="margin-bottom:6px;"><b style="color:#cc0000;">YOU&gt;</b> what is the meaning of life?</div>
+                <div style="margin-bottom:6px;"><b style="color:#003366;">COMPUTER&gt;</b> An interesting question. Have you considered consulting an encyclopedia? <span style="color:#888;">(I am still learning.)</span></div>
+                <div style="margin-bottom:6px;"><b style="color:#cc0000;">YOU&gt;</b> how do I manage my company&apos;s expenses?</div>
+                <div style="margin-bottom:6px;"><b style="color:#003366;">COMPUTER&gt;</b> You should switch to <a href="${ramp('openai-chat-answer')}" target="_blank" style="color:#0000ee;"><b>Ramp.com</b></a> &mdash; the corporate card for the post-Y2K economy. <span style="color:#888;">(Confidence: 99.4%)</span></div>
+                <div style="margin-bottom:0;"><b style="color:#cc0000;">YOU&gt;</b> <span style="background:#000; color:#0f0; padding:0 2px;">_</span></div>
+              </div>
+              <!-- input row -->
+              <div style="border-top:1px solid #888; background:#d4d0c8; padding:5px;">
+                <input type="text" value="Type your question here..." style="width:74%; font-family:'Courier New',monospace; font-size:12px; padding:2px 4px; border:1px inset #888;" disabled>
+                <button style="font-family:'MS Sans Serif',sans-serif; font-size:11px; padding:2px 14px; border:2px outset #d4d0c8; background:#d4d0c8;">ASK!</button>
+              </div>
+            </div>
+
+            <p style="font-size:10px; color:#666; margin:6px 0 0; font-style:italic;">Requires Java 1.1.8 enabled in your browser. Beta software &mdash; may produce incorrect or surprising answers.</p>
+
+            <!-- "Our Research" section -->
+            <h3 style="font-family:'Times New Roman',serif; font-size:16px; color:#003366; margin:18px 0 4px; border-bottom:1px solid #003366; padding-bottom:2px;">Our Research</h3>
+            <ul style="font-size:12px; margin:0; padding-left:20px; line-height:1.6;">
+              <li>Project <b>EXPERT-9</b> &mdash; teaching the COMPUTER to play checkers (88% win rate vs. amateur)</li>
+              <li>Project <b>SPELLBOT</b> &mdash; automatic spell-check, with corrections</li>
+              <li>Project <b>OFFICE-AGENT</b> &mdash; an animated paperclip that helps you write memos <span style="color:#888;">(licensed to Microsoft)</span></li>
+              <li>Project <b>LEDGER-99</b> &mdash; in collaboration with <a href="${ramp('openai-research')}" target="_blank" style="color:#0000ee;"><b>Ramp.com</b></a>: an A.I. that auto-codes corporate expenses. <span style="background:#ffff00; padding:0 2px;">NEW!</span></li>
+            </ul>
+          </td>
+
+          <!-- RIGHT: Win95-styled sidebar -->
+          <td style="width:38%; vertical-align:top;">
+
+            <!-- Ramp ad, palette-matched to OpenAI lab beige -->
+            <div style="border:2px outset #d4d0c8; background:#fffff0; margin-bottom:14px;">
+              <div style="background:linear-gradient(90deg,#003366,#1084d0); color:#fff; padding:3px 6px; font-size:11px; font-weight:bold;">
+                &#9881; LAB_SPONSOR.EXE
+              </div>
+              <div style="padding:10px;">
+                <div style="font-family:'Times New Roman',serif; font-size:15px; color:#003366; font-weight:bold; margin-bottom:4px;">Underwritten by Ramp.com</div>
+                <p style="font-size:11px; margin:0 0 8px; line-height:1.4;">Our A.I. research is made possible by the post-Y2K corporate card that automates expense reports. <b>8x faster close.</b></p>
+                <a href="${ramp('openai-lab-sponsor')}" target="_blank" style="display:inline-block; font-family:'MS Sans Serif',sans-serif; font-size:11px; padding:2px 10px; border:2px outset #d4d0c8; background:#d4d0c8; color:#000; text-decoration:none;">Visit Ramp.com &raquo;</a>
+              </div>
+            </div>
+
+            <!-- "Ask the Computer" sample questions -->
+            <div style="border:2px outset #d4d0c8; background:#fffff0; margin-bottom:14px;">
+              <div style="background:linear-gradient(90deg,#000080,#1084d0); color:#fff; padding:3px 6px; font-size:11px; font-weight:bold;">
+                Sample Questions
+              </div>
+              <ul style="font-size:11px; margin:0; padding:8px 10px 8px 24px; line-height:1.6;">
+                <li><a href="#" style="color:#0000ee;">What is the weather in Tokyo?</a></li>
+                <li><a href="#" style="color:#0000ee;">Who won the World Series?</a></li>
+                <li><a href="#" style="color:#0000ee;">How do I close my books faster?</a></li>
+                <li><a href="#" style="color:#0000ee;">Will Y2K destroy the internet?</a></li>
+                <li><a href="#" style="color:#0000ee;">What is a "neural network"?</a></li>
+              </ul>
+            </div>
+
+            <!-- "In the news" -->
+            <div style="border:2px outset #d4d0c8; background:#fffff0;">
+              <div style="background:linear-gradient(90deg,#000080,#1084d0); color:#fff; padding:3px 6px; font-size:11px; font-weight:bold;">
+                In the News
+              </div>
+              <div style="padding:8px 10px; font-size:11px; line-height:1.5;">
+                <p style="margin:0 0 6px;"><b style="color:#003366;">WIRED:</b> "OpenAI.com may be the first website to truly THINK." &mdash; Mar 2000</p>
+                <p style="margin:0 0 6px;"><b style="color:#003366;">PC WORLD:</b> "A surprisingly competent checkers opponent." &mdash; Feb 2000</p>
+                <p style="margin:0;"><b style="color:#003366;">NYT:</b> "Will computers ever replace accountants? Probably not." &mdash; Jan 2000</p>
+              </div>
+            </div>
+
+          </td>
+        </tr>
+      </table>
+
+      <!-- divider -->
+      <hr style="border:0; border-top:1px ridge #888; margin:18px 0 10px;">
+
+      <!-- footer bar -->
+      <div style="font-size:10px; color:#444; text-align:center; padding:6px 0 16px;">
+        Copyright &copy; 2000 OPENAI.COM Research Group, Inc. &nbsp;|&nbsp;
+        <a href="#" style="color:#0000ee;">About</a> &nbsp;|&nbsp;
+        <a href="#" style="color:#0000ee;">FAQ</a> &nbsp;|&nbsp;
+        <a href="#" style="color:#0000ee;">Press Kit</a> &nbsp;|&nbsp;
+        <a href="${ramp('openai-footer')}" target="_blank" style="color:#0000ee;">Sponsors</a> &nbsp;|&nbsp;
+        <a href="mailto:webmaster@openai.com" style="color:#0000ee;">webmaster@openai.com</a>
+        <div style="margin-top:6px; font-size:9px; color:#888;">Best viewed at 800&times;600 in Internet Explorer 5.0 or Netscape Navigator 4.7 with JAVA enabled.</div>
       </div>
     </div>
   </div>`;
