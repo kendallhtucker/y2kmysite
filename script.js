@@ -475,45 +475,63 @@ function renderSite(domain) {
 
 function formatCounter(n) { return n.toLocaleString('en-US'); }
 
-// Counts UNIQUE sites that have been Y2K-ified.
-// Only bumps the shared counter the first time a given domain is generated
-// in this browser (tracked via localStorage). Otherwise just reads the count.
+// Counts UNIQUE sites that have been Y2K-ified — globally, across every user.
+// We keep a per-domain counter on the server. If that counter is missing
+// (404), the domain is brand new globally → bump it AND bump the master.
+// Otherwise the site has already been counted by someone, somewhere, ever.
+function domainKey(domain) {
+  return 'site_' + String(domain || '').toLowerCase().replace(/[^a-z0-9]+/g, '_');
+}
+
 function bumpAndShowCounter(domain) {
   const el = document.getElementById('visit-count');
-  if (!el) return;
+  const homeEl = document.getElementById('home-counter');
+  if (!el && !homeEl) return;
   if (window.__y2kCounterPending) return;
-
-  // Have we already counted this domain in this browser?
-  let already = false;
-  try {
-    const seen = JSON.parse(localStorage.getItem('y2k_seen') || '[]');
-    if (domain && seen.indexOf(domain) !== -1) {
-      already = true;
-    } else if (domain) {
-      seen.push(domain);
-      localStorage.setItem('y2k_seen', JSON.stringify(seen));
-    }
-  } catch (e) { /* localStorage unavailable */ }
-
   window.__y2kCounterPending = true;
-  el.textContent = '...';
-  const endpoint = already
-    ? 'https://api.counterapi.dev/v1/y2kmysite/sites_generated/'
-    : 'https://api.counterapi.dev/v1/y2kmysite/sites_generated/up';
-  fetch(endpoint, { cache: 'no-store' })
-    .then(r => r.ok ? r.json() : null)
+
+  if (el) el.textContent = '...';
+
+  const setBoth = (n) => {
+    if (el) el.textContent = formatCounter(n);
+    if (homeEl) homeEl.textContent = String(n).padStart(9, '0');
+  };
+  const setFallback = () => {
+    if (el) el.textContent = 'many';
+  };
+
+  const masterRead  = 'https://api.counterapi.dev/v1/y2kmysite/sites_generated/';
+  const masterBump  = 'https://api.counterapi.dev/v1/y2kmysite/sites_generated/up';
+  const perDomain   = 'https://api.counterapi.dev/v1/y2kmysite/' + domainKey(domain) + '/';
+  const perDomainUp = perDomain + 'up';
+
+  // Step 1: check the per-domain counter.
+  fetch(perDomain, { cache: 'no-store' })
+    .then(r => {
+      if (r.status === 400 || r.status === 404) {
+        // Globally new domain. Bump master + create per-domain counter.
+        return Promise.all([
+          fetch(masterBump,  { cache: 'no-store' }).then(x => x.ok ? x.json() : null),
+          fetch(perDomainUp, { cache: 'no-store' })
+        ]).then(([j]) => j);
+      }
+      if (r.ok) {
+        // Already counted globally. Just read master, no bump.
+        return fetch(masterRead, { cache: 'no-store' }).then(x => x.ok ? x.json() : null);
+      }
+      return null;
+    })
     .then(j => {
       window.__y2kCounterPending = false;
       if (j && typeof j.count === 'number') {
-        const real = Math.max(0, j.count - QA_OFFSET);
-        el.textContent = formatCounter(real);
+        setBoth(j.count);
       } else {
-        el.textContent = 'many';
+        setFallback();
       }
     })
     .catch(() => {
       window.__y2kCounterPending = false;
-      el.textContent = 'many';
+      setFallback();
     });
 }
 
@@ -1002,9 +1020,7 @@ document.addEventListener('DOMContentLoaded', () => {
   loadHomeCounter();
 });
 
-// Read the live count without incrementing.
-// QA_OFFSET subtracts test traffic we logged during development.
-const QA_OFFSET = 14;
+// Read the live master count without incrementing. Used on homepage load.
 function loadHomeCounter() {
   const el = document.getElementById('home-counter');
   if (!el) return;
@@ -1012,8 +1028,7 @@ function loadHomeCounter() {
     .then(r => r.ok ? r.json() : null)
     .then(j => {
       if (j && typeof j.count === 'number') {
-        const real = Math.max(0, j.count - QA_OFFSET);
-        el.textContent = String(real).padStart(9, '0');
+        el.textContent = String(j.count).padStart(9, '0');
       }
     })
     .catch(() => {});
