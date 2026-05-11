@@ -168,7 +168,7 @@ function renderWaybackSnapshot(domain, wb, profile) {
 
     <!-- Marquee in brand colors -->
     <marquee scrollamount="6" style="background:${p.primary}; color:${p.accent}; font-family:'Courier New',monospace; padding:4px 0; font-size:13px; border-bottom:2px ridge ${p.secondary};">
-      &#10024; GENUINE ${wb.displayDate.toUpperCase()} ARCHIVE OF ${displayName.toUpperCase()} &#10024; SERVED FRESH FROM THE WAYBACK MACHINE &#10024; Y2K COMPLIANT!! &#10024; OPTIMIZED FOR NETSCAPE 4 + IE5 &#10024;
+      &#10024; WELCOME TO ${displayName.toUpperCase()} &#10024; LAST UPDATED ${wb.displayDate.toUpperCase()} &#10024; Y2K COMPLIANT &#10024; BEST VIEWED IN NETSCAPE 4 OR IE5 AT 800x600 &#10024; BOOKMARK US WITH CTRL+D &#10024;
     </marquee>
 
     <!-- The real snapshot, in an iframe. Loading splash sits behind the iframe
@@ -858,7 +858,7 @@ function tplFlashPromoCinematic(d, p) {
           <h1 style="font-family:'Impact','Arial Black',sans-serif; font-size:96px; line-height:0.9; margin:0; color:${p.accent}; letter-spacing:-2px; transform:skew(6deg);">${d.sitename.toUpperCase()}</h1>
         </div>
         <div style="margin-top:32px; font-family:'Times New Roman',serif; font-style:italic; color:${p.accent}; font-size:20px; max-width:560px; margin:32px auto 0; letter-spacing:2px;">
-          &mdash;&nbsp;${d.tagline}&nbsp;&mdash;
+          &laquo;&nbsp;${d.tagline}&nbsp;&raquo;
         </div>
       </div>
 
