@@ -994,8 +994,7 @@ function loadHomeCounter() {
     .then(r => r.ok ? r.json() : null)
     .then(j => {
       if (j && typeof j.count === 'number') {
-        // Pad to 7 digits for that LCD odometer feel
-        el.textContent = String(j.count).padStart(7, '0');
+        el.textContent = formatCounter(j.count);
       }
     })
     .catch(() => {});

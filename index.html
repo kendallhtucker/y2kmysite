@@ -308,30 +308,9 @@
     text-decoration: none; display: inline-block;
   }
   .ie5-content .ex-btn:hover { background: linear-gradient(180deg, #ff00ff, #ff80ff); }
-  /* Hit counter — classic 1999 LCD odometer */
-  .ie5-content .hitcounter-wrap {
-    margin: 24px auto 18px; text-align: center;
-    display: inline-block; padding: 10px 16px;
-    background: #c0c0c0; border: 2px ridge #fff;
-    box-shadow: inset 1px 1px 0 #fff, 2px 2px 0 #404040;
-  }
-  .ie5-content .hitcounter-wrap-outer { text-align: center; }
-  .ie5-content .hitcounter-label {
-    font-family: "Arial", sans-serif; font-size: 11px; font-weight: bold;
-    color: #000080; letter-spacing: 1px; margin-bottom: 4px;
-  }
-  .ie5-content .hitcounter-lcd {
-    display: inline-block; background: #000; color: #00ff00;
-    font-family: "Courier New", monospace; font-size: 28px; font-weight: bold;
-    letter-spacing: 8px; padding: 6px 14px;
-    border: 2px inset #808080;
-    text-shadow: 0 0 6px #00ff00, 0 0 2px #00ff00;
-  }
-  .ie5-content .hitcounter-sub {
-    font-family: "Comic Sans MS", cursive; font-size: 11px; color: #800080;
-    margin-top: 6px;
-  }
   .ie5-content .footer-note { font-size: 11px; color: #808080; margin-top: 22px; font-family: "Arial"; }
+  .ie5-content .counter-line { display: inline-block; margin-top: 4px; }
+  .ie5-content #home-counter { font-weight: bold; color: #000; }
   .ie5-content .footer-note a { color: #0000ee; }
   .ie5-statusbar {
     background: #c0c0c0; border-top: 1px solid #fff;
@@ -464,12 +443,9 @@
         <a class="ex-btn" onclick="quickGo('linear.app')">linear.app</a>
         <a class="ex-btn" onclick="quickGo('nytimes.com')">nytimes.com</a>
       </div>
-      <div class="hitcounter-wrap">
-        <div class="hitcounter-lcd" id="home-counter" aria-live="polite">0000007</div>
-        <div class="hitcounter-sub">&#10024; sites Y2K-ified since the dawn of time &#10024;</div>
-      </div>
       <p class="footer-note">
         Brought to you by <a href="https://ramp.com/?rc=6S7S4B&amp;referral_location=referral_page&amp;utm_source=y2kmysite&amp;utm_medium=footer&amp;utm_campaign=stunt" target="_blank"><b>Ramp.com</b></a>, because your finance software should be better than it was in 1999. Best viewed in Netscape&reg; Navigator 4 or Internet Explorer 5 at 800&times;600.
+        <br><span class="counter-line"><span id="home-counter" aria-live="polite">&hellip;</span> web-sites Y2K-ified since the dawn of time.</span>
       </p>
     </div>
     <div class="ie5-statusbar">
