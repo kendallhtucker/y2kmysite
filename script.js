@@ -628,6 +628,73 @@ async function renderSite(domain) {
   }
 
   let html = '';
+
+  // Helpers for the AI generation path (kept inline so they can capture
+  // `domain` / `data` if we ever want to). Defined here so they're hoisted
+  // above the dispatch.
+  async function fetchAIGenerated(d, dat, cfg) {
+    const lsKey = 'y2k_ai_v1_' + d;
+    // 1. Browser-side localStorage cache (cheap second line of defense in
+    //    addition to the server KV).
+    try {
+      const cached = localStorage.getItem(lsKey);
+      if (cached) {
+        const obj = JSON.parse(cached);
+        if (obj && obj.html && obj.at && (Date.now() - obj.at) < 7 * 24 * 60 * 60 * 1000) {
+          return obj.html;
+        }
+      }
+    } catch (_) { /* private mode etc. */ }
+
+    const body = {
+      domain: d,
+      title:       dat.tagline || '',
+      description: dat.welcome || '',
+      navLabels:   Array.isArray(dat.navLabels) ? dat.navLabels : [],
+      productImages: Array.isArray(dat.productImages) ? dat.productImages : [],
+      category:    (window.brandProfile && window.brandProfile(d) && window.brandProfile(d).category) || '',
+    };
+
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), cfg.PROXY_TIMEOUT_MS || 12000);
+    let resp;
+    try {
+      resp = await fetch(cfg.PROXY_URL.replace(/\/$/, '') + '/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: ctrl.signal,
+      });
+    } finally {
+      clearTimeout(tid);
+    }
+    if (!resp.ok) throw new Error('proxy ' + resp.status);
+    const json = await resp.json();
+    if (!json || !json.html) throw new Error('proxy returned no html');
+    try { localStorage.setItem(lsKey, JSON.stringify({ html: json.html, at: Date.now() })); } catch (_) {}
+    return json.html;
+  }
+
+  function wrapAIGenerated(d, dat, fragment) {
+    // The model returns a self-contained <div class="y2k-page">...</div>.
+    // Wrap it in the standard y2kmysite chrome so the restart button and
+    // counter still appear and the page feels consistent.
+    const brand = (dat.displayName || d.split('.')[0]).toString();
+    return `
+      <div class="y2k-ai-wrap" style="position:relative;">
+        ${fragment}
+        <div style="margin:18px auto; max-width:740px; text-align:center; font:11px Tahoma; color:#444;">
+          <hr style="border:1px ridge #ff00ff; margin:14px 0;">
+          This Y2K version of <b>${brand}</b> was hallucinated by
+          <a href="https://kendallhtucker.github.io/y2kmysite/">y2kmysite</a>
+          on ${new Date().toLocaleDateString()}.
+          <br>
+          <button data-restart style="margin-top:10px; padding:6px 14px; font:bold 12px Tahoma; background:#c0c0c0; border:2px outset #fff; cursor:pointer;">&laquo; Y2K-ify another site</button>
+        </div>
+      </div>
+    `;
+  }
+
   if (template === 'google2000')       html = tplGoogle2000();
   else if (template === 'nytimes2000') html = tplNYTimes2000();
   else if (template === 'apple2000')   html = tplApple2000();
@@ -635,17 +702,31 @@ async function renderSite(domain) {
   else if (template === 'linear2000')  html = tplLinear2000();
   else if (template === '2advanced')   html = tpl2Advanced(data); // stripe.com curated
   else if (template === 'variant') {
-    // Uncurated: pick archetype via brandProfile, then render with variant traits.
-    try {
-      const profile = window.brandProfile ? window.brandProfile(domain) : null;
-      if (profile && window.renderVariant) {
-        html = window.renderVariant(data, profile);
-      } else {
+    // Uncurated: try the AI proxy first (if configured + we have live data).
+    // Fall through to the regex archetype pipeline on any failure.
+    let aiHtml = null;
+    const cfg = window.Y2K_CONFIG || {};
+    if (cfg.PROXY_URL && cfg.USE_AI_GENERATION && data.__live) {
+      try {
+        aiHtml = await fetchAIGenerated(domain, data, cfg);
+      } catch (e) {
+        console.warn('AI generation failed, falling back to archetype:', e && e.message);
+      }
+    }
+    if (aiHtml) {
+      html = wrapAIGenerated(domain, data, aiHtml);
+    } else {
+      try {
+        const profile = window.brandProfile ? window.brandProfile(domain) : null;
+        if (profile && window.renderVariant) {
+          html = window.renderVariant(data, profile);
+        } else {
+          html = tplGeocities(data);
+        }
+      } catch (e) {
+        console.error('variant render failed', e);
         html = tplGeocities(data);
       }
-    } catch (e) {
-      console.error('variant render failed', e);
-      html = tplGeocities(data);
     }
   }
   else                                 html = tplGeocities(data);

@@ -444,12 +444,35 @@ async function lookupLiveSite(domain) {
     // We're more permissive than before (60 chars) and then trust
     // __shortenNavLabel() to produce a clean nav-y string.
     const rawNavCandidates = [];
-    const linkRe = /\[([^\]]+)\]\(([^)]+)\)/g;
+    // PRIMARY: plain-text bullet nav (Brex, Mercury). These appear FIRST in
+    // the markdown and are typically the real top nav, even when individual
+    // items aren't linked. Pulling them first guarantees they survive the
+    // 30-candidate cap below.
+    const bulletNavRe = /^\*\s+([A-Z][A-Za-z][A-Za-z &]{1,28})\s*$/gm;
+    let bnm;
+    while ((bnm = bulletNavRe.exec(body)) !== null) {
+      const raw = bnm[1].trim();
+      if (!raw || raw.length > 30) continue;
+      const lbl = __shortenNavLabel(raw);
+      if (!lbl) continue;
+      rawNavCandidates.push(lbl);
+      if (rawNavCandidates.length >= 8) break;
+    }
+
+    // SECONDARY: linked nav. Match link text only — NOT image alt text. A
+    // markdown image is `![alt](url)`. We use a negative lookbehind so we
+    // never match a `[` that's preceded by `!`. Also we explicitly reject any
+    // captured label that starts with `!` as a belt-and-suspenders.
+    const linkRe = /(?<!!)\[([^\]]+)\]\(([^)]+)\)/g;
     let m;
     while ((m = linkRe.exec(body)) !== null) {
-      const raw = m[1].trim();
+      let raw = m[1].trim();
+      if (raw.startsWith('!')) continue; // safety net
       if (!raw || raw.length > 80) continue;
       if (/^https?:/i.test(raw)) continue;
+      // Drop markdown image alt text leaking in:
+      //   "Image 1: HP Hero", "image 17: Homepage tile background ..."
+      if (/^image\s*\d+/i.test(raw)) continue;
       if (/^image\s*\d*$/i.test(raw)) continue;
       // reject obviously bad labels — single-word CTAs and chrome bits.
       // We anchor with ^...$ patterns so multi-word brand items like
@@ -507,18 +530,40 @@ async function lookupLiveSite(domain) {
 
     // Product images: extract markdown image URLs. Skip tracking pixels,
     // tiny icons, base64-data URIs, and SVGs (usually logos/decoration).
+    // Also reject "customer logo carousel" images — the alt-text pattern
+    // `_grey` / `-grey` / `HP-<Vendor>` is used by Brex, Stripe, Mercury and
+    // most B2B SaaS sites to render the "trusted by" social-proof strip. Those
+    // are not the brand's products, so showing them as product tiles is
+    // misleading. We collect them in a separate bucket and only use them as a
+    // last resort.
     const productImages = [];
+    const customerLogos = [];
     const seenImg = new Set();
     const imgRe = /!\[([^\]]*)\]\(([^)]+)\)/g;
     while ((m = imgRe.exec(body)) !== null) {
       const u = m[2].trim();
+      const altRaw = (m[1] || '').trim();
       if (!/^https?:\/\//i.test(u)) continue;
       if (/\.(svg)(\?|$)/i.test(u)) continue;
       if (/sprite|pixel|spacer|1x1|tracking|googletag|doubleclick/i.test(u)) continue;
       if (seenImg.has(u)) continue;
       seenImg.add(u);
-      productImages.push({ url: u, alt: (m[1] || '').slice(0, 60) });
+      const looksLikeCustomerLogo =
+        /(_grey|-grey|grayscale|customer[-_]?logo|partner[-_]?logo|logo[-_]?cloud|logo[-_]?wall)/i.test(u + ' ' + altRaw) ||
+        /^hp[-_]/i.test(altRaw) ||
+        /^image\s*\d+\s*:\s*hp[-_]/i.test(altRaw);
+      const entry = { url: u, alt: altRaw.slice(0, 60) };
+      if (looksLikeCustomerLogo) {
+        if (customerLogos.length < 4) customerLogos.push(entry);
+      } else {
+        productImages.push(entry);
+      }
       if (productImages.length >= 8) break;
+    }
+    // If we didn't get any "real" product images but we have customer logos,
+    // fall back to those rather than nothing.
+    if (productImages.length === 0 && customerLogos.length) {
+      for (const e of customerLogos) productImages.push(e);
     }
 
     // ALWAYS guarantee at least one usable image — the favicon, sized up.
@@ -609,7 +654,9 @@ const CATEGORY_ARCHETYPES = {
   'productivity': ['flashPortfolioFuturist', 'designAgency'],
   'design':       ['designAgency', 'flashPortfolioFuturist'],
   'corp':         ['corpConsumerBrand', 'flashPromoCinematic'],
-  'finance':      ['corpEcommercePortal'],
+  // Fintech & B2B finance: NOT retail. Brex, Mercury, etc. are SaaS
+  // dashboards, not shopping portals. Route them to corp/saas-style templates.
+  'finance':      ['flashPortfolioFuturist', 'corpConsumerBrand', 'designAgency'],
   'tech':         ['flashPortfolioFuturist', 'designAgency'],
   'personal':     ['geocities'],
   'unknown':      ['geocities', 'maximalPortal', 'corpConsumerBrand', '2advanced'],
