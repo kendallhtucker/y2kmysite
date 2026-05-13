@@ -5,6 +5,8 @@
   "type": "module",
   "description": "Vercel serverless proxy that AI-generates Y2K-styled brand pages for y2kmysite.",
   "dependencies": {
-    "@vercel/kv": "^2.0.0"
+    "@vercel/kv": "^2.0.0",
+    "@sparticuz/chromium": "^131.0.0",
+    "puppeteer-core": "^23.0.0"
   }
 }

@@ -530,6 +530,136 @@ function hashStr(s) {
   return Math.abs(h);
 }
 
+// =============================================================================
+// AI rebuild flow (uncurated domains with a real year-2000 snapshot).
+// Pipeline: snapshot URL → backend screenshots it → GPT-4o vision rewrites as
+// authentic Y2K HTML → we wrap in our standard chrome (marquee, footer, etc).
+// =============================================================================
+
+// Y2K loading state shown WHILE the backend works. No iframe, no archive name,
+// no Perpi. Just a brand-colored "system" panel with a spinner, marquee, and a
+// fake boot-log ticker so the wait feels intentional.
+function renderRebuildLoading(domain, wb, profile) {
+  const p = (profile && profile.palette) || { primary:'#003399', secondary:'#000000', accent:'#ffffff' };
+  const displayName = (profile && profile.displayName) || domain.split('.')[0].replace(/^\w/, c => c.toUpperCase());
+  const upper = displayName.toUpperCase();
+  // Period-accurate fake boot log. No vendor names, no "archive".
+  const logLines = [
+    '&gt; INITIALIZING TIME-WARP CHAMBER...........[OK]',
+    '&gt; DIAL-UP HANDSHAKE @ 56000bps..............[OK]',
+    '&gt; LOCATING ' + upper + ' CIRCA 2000..........[OK]',
+    '&gt; LOADING NETSCAPE LAYOUT ENGINE.............[OK]',
+    '&gt; ALLOCATING TABLE CELLS.....................[1024]',
+    '&gt; PARSING &lt;BLINK&gt; AND &lt;MARQUEE&gt; TAGS....[OK]',
+    '&gt; RECONSTRUCTING GIF89A SPACER PIXELS........[OK]',
+    '&gt; APPLYING Y2K STYLE PROFILE.................[OK]',
+    '&gt; STAND BY..................................',
+  ];
+  return `
+  <div style="background:${p.accent}; min-height:100vh; padding-bottom:90px; color:${p.secondary}; font-family:'Times New Roman',serif;">
+    <marquee scrollamount="6" style="background:${p.primary}; color:${p.accent}; font-family:'Courier New',monospace; padding:4px 0; font-size:13px; border-bottom:2px ridge ${p.secondary};">
+      &#9203; REBUILDING ${upper} FROM THE YEAR 2000 &mdash; PLEASE WAIT &#9203; HAND-CRAFTED BY AI &mdash; FIRST-VISITOR LOADING TIME ~20 SECONDS &#9203; SUBSEQUENT VISITORS GET INSTANT CACHED COPY &#9203;
+    </marquee>
+
+    <div style="max-width:760px; margin:24px auto 0; background:${p.primary}; border:3px ridge ${p.secondary}; box-shadow:4px 4px 0 ${p.secondary}40; padding:0;">
+      <div style="background:${p.secondary}; color:${p.accent}; font:bold 12px 'Courier New',monospace; padding:4px 10px; border-bottom:1px solid ${p.accent}80;">
+        &#9633; ${upper}.SYS &mdash; Y2K REBUILD CONSOLE
+      </div>
+      <div style="padding:22px 18px; background:#000; color:#33ff66; font:13px 'Courier New',monospace; line-height:1.7; min-height:260px;">
+        ${logLines.map((l, i) => `<div style="opacity:0; animation: y2kRebuildLine 0.4s ease-out ${i * 0.45}s forwards;">${l}</div>`).join('\n')}
+        <div style="margin-top:14px; color:#ffff66;"><span style="animation: y2kRebuildBlink 0.9s steps(1) infinite;">&#9608;</span> COMPILING HTML&hellip;</div>
+      </div>
+      <div style="background:${p.accent}; padding:14px 18px; text-align:center; font:11px Verdana,sans-serif; color:${p.secondary};">
+        Your custom <b>${displayName}</b> page is being rebuilt by a vision model from a year-2000 reference.
+        Future visitors will see the cached copy instantly.
+      </div>
+    </div>
+
+    <div style="max-width:760px; margin:18px auto 0; text-align:center;">
+      <div style="display:inline-block; width:42px; height:42px; border:4px solid ${p.primary}40; border-top-color:${p.primary}; border-radius:50%; animation: y2kRebuildSpin 0.9s linear infinite;"></div>
+    </div>
+
+    <style>
+      @keyframes y2kRebuildSpin { to { transform: rotate(360deg); } }
+      @keyframes y2kRebuildBlink { 50% { opacity: 0; } }
+      @keyframes y2kRebuildLine { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+  </div>`;
+}
+
+// Call backend /api/rebuild and return { html } (with localStorage cache).
+async function fetchRebuiltSite(domain, wb, cfg) {
+  const lsKey = 'y2k_rebuild_v1_' + domain.toLowerCase().replace(/^www\./, '');
+  // Browser-side cache (in addition to server KV).
+  try {
+    const cached = localStorage.getItem(lsKey);
+    if (cached) {
+      const obj = JSON.parse(cached);
+      // 14-day soft expiry on the browser side; server is the source of truth.
+      if (obj && obj.html && obj.at && (Date.now() - obj.at) < 14 * 24 * 60 * 60 * 1000) {
+        return { html: obj.html, cached: true };
+      }
+    }
+  } catch (_) { /* private mode etc. */ }
+
+  const body = {
+    domain: domain,
+    snapshotUrl: wb.iframeUrl || wb.viewUrl,
+    displayDate: wb.displayDate || '',
+    navLabels: [], // could pass these in later from live-site lookup
+  };
+  const ctrl = new AbortController();
+  const timeoutMs = cfg.REBUILD_TIMEOUT_MS || 55000; // backend is up to 60s on Vercel
+  const tid = setTimeout(() => ctrl.abort(), timeoutMs);
+  let resp;
+  try {
+    resp = await fetch(cfg.PROXY_URL.replace(/\/$/, '') + '/api/rebuild', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: ctrl.signal,
+    });
+  } finally {
+    clearTimeout(tid);
+  }
+  if (!resp.ok) throw new Error('rebuild http ' + resp.status);
+  const json = await resp.json();
+  if (!json || !json.html) throw new Error('rebuild empty');
+  try { localStorage.setItem(lsKey, JSON.stringify({ html: json.html, at: Date.now() })); } catch (_) {}
+  return json;
+}
+
+// Wrap the AI-returned <div class="y2k-page">…</div> in our standard chrome:
+// top marquee, footer with restart, Ramp tag, best-viewed badge.
+function wrapRebuiltSite(domain, wb, profile, fragment) {
+  const p = (profile && profile.palette) || { primary:'#003399', secondary:'#000000', accent:'#ffffff' };
+  const displayName = (profile && profile.displayName) || domain.split('.')[0].replace(/^\w/, c => c.toUpperCase());
+  const dateLine = wb && wb.displayDate ? wb.displayDate.toUpperCase() : 'CIRCA 2000';
+  return `
+  <div style="background:${p.accent}; min-height:100vh; padding-bottom:90px; color:${p.secondary}; font-family:'Times New Roman',serif;">
+    <marquee scrollamount="6" style="background:${p.primary}; color:${p.accent}; font-family:'Courier New',monospace; padding:4px 0; font-size:13px; border-bottom:2px ridge ${p.secondary};">
+      &#10024; WELCOME TO ${displayName.toUpperCase()} &#10024; REBUILT FROM ${dateLine} &#10024; Y2K COMPLIANT &#10024; BEST VIEWED IN NETSCAPE 4 OR IE5 AT 800x600 &#10024; BOOKMARK US WITH CTRL+D &#10024;
+    </marquee>
+
+    <div style="max-width:1100px; margin:14px auto 0; background:#fff; border:2px inset ${p.secondary}; box-shadow:0 0 0 1px ${p.primary}; padding:0; overflow:hidden;">
+      ${fragment}
+    </div>
+
+    <div style="max-width:1100px; margin:14px auto 0; padding:10px 14px; border-top:1px solid ${p.secondary}40; font-family:Verdana,sans-serif; font-size:11px; color:${p.secondary}; text-align:center;">
+      ${window.bestViewedBadge ? window.bestViewedBadge() : ''}
+      <div style="margin-top:8px;">${window.footerTag ? window.footerTag() : ''}</div>
+      <div style="margin-top:6px; font-size:10px; color:${p.secondary}99;">
+        Hand-rebuilt from a year-2000 reference by AI &mdash; preserved as a tribute to the early web.
+      </div>
+      <div style="margin-top:10px;">
+        <button data-restart style="background:${p.primary}; border:3px outset ${p.primary}; color:${p.accent}; padding:5px 16px; font-family:Verdana; font-size:11px; font-weight:bold;">[ Y2K-ify another &raquo; ]</button>
+      </div>
+    </div>
+
+    ${window.rampPopupReSpawn ? window.rampPopupReSpawn('rebuilt-popup') : ''}
+  </div>`;
+}
+
 async function renderSite(domain) {
   // Special case: ramp.com redirects to the real ramp2000 site
   if (domain === 'ramp.com') {
@@ -550,22 +680,34 @@ async function renderSite(domain) {
     template = 'variant'; // uncurated -> archetype + variant traits
   }
 
-  // For uncurated sites, check if Wayback has a Y2K-era snapshot.
-  // If yes: serve it through our chrome instead of generating.
-  // If no: fall through to the variant pipeline.
-  if (template === 'variant' && window.lookupWayback) {
+  // For uncurated sites: if a real year-2000 snapshot exists, ask the AI
+  // proxy to rebuild it from a screenshot as authentic Y2K HTML (no iframe).
+  // The proxy caches by domain forever, so first visitor pays the cost.
+  // If anything fails, we fall through to the variant/archetype pipeline.
+  const cfg = window.Y2K_CONFIG || {};
+  if (template === 'variant' && window.lookupWayback && cfg.PROXY_URL && cfg.USE_AI_REBUILD !== false) {
     try {
       const wb = await window.lookupWayback(domain);
       if (wb && wb.available) {
+        // Paint loading state immediately so the user sees motion.
         const profile = window.brandProfile ? window.brandProfile(domain) : null;
-        const html = window.renderWaybackSnapshot(domain, wb, profile);
-        render.innerHTML = html;
-        render.querySelectorAll('[data-restart]').forEach(b => b.addEventListener('click', restartFlow));
-        if (window.wireWaybackFallback) window.wireWaybackFallback(render);
-        document.getElementById('footbar').classList.remove('hidden');
-        bumpAndShowCounter(domain);
-        window.scrollTo(0,0);
-        return;
+        render.innerHTML = renderRebuildLoading(domain, wb, profile);
+        window.scrollTo(0, 0);
+
+        const rebuilt = await fetchRebuiltSite(domain, wb, cfg).catch((e) => {
+          console.warn('AI rebuild failed, falling back:', e && e.message);
+          return null;
+        });
+
+        if (rebuilt && rebuilt.html) {
+          render.innerHTML = wrapRebuiltSite(domain, wb, profile, rebuilt.html);
+          render.querySelectorAll('[data-restart]').forEach(b => b.addEventListener('click', restartFlow));
+          document.getElementById('footbar').classList.remove('hidden');
+          bumpAndShowCounter(domain);
+          window.scrollTo(0, 0);
+          return;
+        }
+        // Rebuild failed — clear loading state and fall through to variant.
       }
     } catch (e) {
       console.warn('wayback lookup failed, generating instead', e);
@@ -707,7 +849,6 @@ async function renderSite(domain) {
     // Uncurated: try the AI proxy first (if configured + we have live data).
     // Fall through to the regex archetype pipeline on any failure.
     let aiHtml = null;
-    const cfg = window.Y2K_CONFIG || {};
     if (cfg.PROXY_URL && cfg.USE_AI_GENERATION && data.__live) {
       try {
         aiHtml = await fetchAIGenerated(domain, data, cfg);

@@ -18,5 +18,15 @@
     // PROXY_URL is set). When false, even uncurated domains use the
     // regex/archetype pipeline. Handy for A/B comparing.
     USE_AI_GENERATION: true,
+
+    // When true (default), uncurated domains that have a real year-2000
+    // snapshot get rebuilt as authentic HTML via the /api/rebuild endpoint
+    // (screenshot → GPT-4o vision → inline HTML, cached forever per-domain).
+    // When false, those domains fall through to the variant/archetype pipeline.
+    // Replaces the old iframe path entirely — no more iframe in production.
+    USE_AI_REBUILD: true,
+
+    // Per-request budget for /api/rebuild. Vercel hobby caps at 60s.
+    REBUILD_TIMEOUT_MS: 55000,
   };
 })();
