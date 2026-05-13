@@ -2,6 +2,7 @@
   "name": "y2kmysite-proxy",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "description": "Vercel serverless proxy that AI-generates Y2K-styled brand pages for y2kmysite.",
   "dependencies": {
     "@vercel/kv": "^2.0.0"

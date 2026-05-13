@@ -518,6 +518,7 @@ const CURATED = {
   'stripe.com':  { template: '2advanced',   data: stripeSiteData() },
   'openai.com':  { template: 'openai2000',  data: null },
   'linear.app':  { template: 'linear2000',  data: null },
+  'perplexity.ai':  { template: 'perplexity2000', data: null },
 };
 
 // Templates available for unknown / hash-routed sites
@@ -700,6 +701,7 @@ async function renderSite(domain) {
   else if (template === 'apple2000')   html = tplApple2000();
   else if (template === 'openai2000')  html = tplOpenAI2000();
   else if (template === 'linear2000')  html = tplLinear2000();
+  else if (template === 'perplexity2000') html = tplPerplexity2000();
   else if (template === '2advanced')   html = tpl2Advanced(data); // stripe.com curated
   else if (template === 'variant') {
     // Uncurated: try the AI proxy first (if configured + we have live data).
@@ -1462,7 +1464,8 @@ function tplNYTimes2000() {
 
     <!-- Masthead -->
     <div style="text-align:center; padding:14px 10px 8px; border-bottom:1px solid #ccc;">
-      <div style="font-family:'UnifrakturMaguntia','Old English Text MT','Times New Roman',serif; font-size:54px; line-height:1; color:#000;">The New York Times</div>
+      <img src="https://web.archive.org/web/20001109144000im_/http://graphics.nytimes.com/images/header/homepage/nytlogo480.gif" alt="The New York Times" style="max-width:100%; height:auto; display:inline-block;" onerror="this.style.display='none';this.nextElementSibling.style.display='block';">
+      <div style="display:none; font-family:'UnifrakturMaguntia','Old English Text MT','Times New Roman',serif; font-size:54px; line-height:1; color:#000;">The New York Times</div>
       <div style="font-family:Arial,sans-serif; font-size:9px; letter-spacing:6px; color:#000; margin-top:2px;">ON THE WEB</div>
     </div>
 
@@ -1526,8 +1529,9 @@ function tplNYTimes2000() {
           <a href="https://www.nytimes.com/search?query=Bush+Barely+Ahead+of+Gore+In+Florida+Recount+Holds+Key+2000" target="_blank" style="color:#003366; text-decoration:none;">Bush Barely Ahead of Gore In Florida; Recount Holds Key</a>
         </h1>
 
-        <!-- ASCII-ish pixel "photo" placeholder (Florida recount workers) -->
-        <div style="width:100%; max-width:340px; height:130px; background:linear-gradient(180deg,#999 0 30%,#ccc 30% 60%,#888 60% 100%); border:1px solid #666; position:relative; margin:6px 0;">
+        <!-- Real Wayback-hosted Nov 9, 2000 NYT election photo -->
+        <div style="width:100%; max-width:340px; position:relative; margin:6px 0;">
+          <img src="https://web.archive.org/web/20001109144000im_/http://graphics.nytimes.com/images/2000/11/09/politics/09elec.1.jpg" alt="Election workers recount ballots" style="width:100%; height:auto; display:block; border:1px solid #666;" onerror="this.outerHTML='<div style=&quot;width:100%; max-width:340px; height:130px; background:linear-gradient(180deg,#999 0 30%,#ccc 30% 60%,#888 60% 100%); border:1px solid #666;&quot;></div>'">
           <div style="position:absolute; bottom:2px; left:4px; right:4px; background:#000c; color:#fff; font-family:Arial; font-size:10px; padding:2px 4px;">Election workers in Miami-Dade County recount ballots Wednesday. (AFP)</div>
         </div>
 
@@ -1606,6 +1610,7 @@ function tplNYTimes2000() {
         <div style="border:1px solid #003366; padding:6px; border-top:0;">
           <b style="color:#cc0000;">CIRCUITS</b><br>
           <a href="https://www.nytimes.com/search?query=Walter+Bender+MIT+Media+Lab+2000" target="_blank" style="color:#003366; font-weight:bold;">A New M.I.T. Media Lab</a>
+          <img src="https://web.archive.org/web/20001109144000im_/http://graphics.nytimes.com/images/2000/11/09/technology/09mitt.1.gif" alt="MIT Media Lab" style="display:block; width:100%; max-width:180px; height:auto; margin:6px auto 0; border:1px solid #ccc;" onerror="this.style.display='none'">
           <p style="margin:4px 0 0; color:#000; font-size:11px;">Walter Bender takes over an institution where re-invention is constant.</p>
         </div>
 
@@ -2146,5 +2151,321 @@ ${issues.map(i => `&#9474; ${i.id} &#9474; ${i.title.padEnd(44)} &#9474; ${i.pri
         Y2K-COMPLIANT // 56,600 BPS OPTIMIZED // ANSI.SYS REQUIRED
       </div>
     </div>
+  </div>`;
+}
+
+/* ---------- PERPLEXITY — Y2K Answer-Engine Portal ----------
+   Vibe: Ask Jeeves butler + AltaVista + early dot-com search portal.
+   "Ask the Cyber-Oracle" / "Ask the Web-Brain". Big search box,
+   animated thinking butler, real-time fake answer ticker, sample
+   questions, web directory.
+   ----------------------------------------------------------- */
+function tplPerplexity2000() {
+  const sampleQs = [
+    'What is the World Wide Web?',
+    'How do I make a HOME-PAGE on Geocities?',
+    'Will Y2K destroy my computer?',
+    'Who will win the 2000 election?',
+    'What is the best dial-up provider?',
+    'How does a CD-ROM work?',
+    'Where can I find MIDI files?',
+    'Is the Dot-Com bubble going to pop?',
+  ];
+
+  const askTicker = [
+    { q: 'How fast is a T1 line?',                 a: '1.544 megabits per second &mdash; ~30x faster than 56k modem.' },
+    { q: 'What is HTML?',                          a: 'HyperText Mark-up Language &mdash; the language of the World Wide Web!' },
+    { q: 'Should I get a Palm Pilot?',             a: 'Yes, the Palm V is HOT this year. Comes with a stylus &amp; calendar.' },
+    { q: 'How do I close my expense reports?',     a: 'Use <b>RAMP.COM</b> &mdash; closes books 8x faster than spreadsheets!' },
+    { q: 'When will the dot-com bubble pop?',      a: 'CYBER-ORACLE confidence: 87%. Best guess: Q1 MMI. Diversify!' },
+  ];
+
+  return `
+  <div style="background:#f0f0e8; min-height:100vh; padding:0 0 80px; font-family:'Times New Roman',Times,serif; color:#000;">
+
+    <!-- ============ TOP NAV (AltaVista / Yahoo style) ============ -->
+    <div style="background:linear-gradient(180deg,#003366 0%,#0066aa 100%); color:#fff; padding:4px 12px; font-family:Verdana,Arial,sans-serif; font-size:11px; border-bottom:2px solid #ffcc00;">
+      <a href="#" style="color:#fff; text-decoration:none;">Home</a> &middot;
+      <a href="#" style="color:#fff; text-decoration:none;">My Perplexity</a> &middot;
+      <a href="#" style="color:#fff; text-decoration:none;">News</a> &middot;
+      <a href="#" style="color:#fff; text-decoration:none;">Finance</a> &middot;
+      <a href="#" style="color:#fff; text-decoration:none;">Shopping</a> &middot;
+      <a href="#" style="color:#fff; text-decoration:none;">Chat</a> &middot;
+      <a href="#" style="color:#fff; text-decoration:none;">Free E-Mail</a> &middot;
+      <a href="#" style="color:#fff; text-decoration:none;">Help</a>
+      <span style="float:right;"><a href="#" style="color:#ffcc00; text-decoration:none;">Sign In</a> | <a href="#" style="color:#ffcc00; text-decoration:none;">Register FREE!</a></span>
+    </div>
+
+    <!-- ============ MASTHEAD ============ -->
+    <div style="background:#fff; padding:20px 12px 16px; text-align:center; border-bottom:1px solid #999;">
+
+      <!-- Logo: PERPLEXITY in colorful retro letterforms -->
+      <div style="display:inline-block; font-family:'Comic Sans MS','Trebuchet MS',sans-serif; font-size:64px; font-weight:bold; letter-spacing:-1px; line-height:1;">
+        <span style="color:#cc0000;">P</span><span style="color:#ff8800;">e</span><span style="color:#33aa33;">r</span><span style="color:#0066cc;">p</span><span style="color:#cc0000;">l</span><span style="color:#ff8800;">e</span><span style="color:#33aa33;">x</span><span style="color:#0066cc;">i</span><span style="color:#cc0000;">t</span><span style="color:#ff8800;">y</span><span style="color:#000; font-size:36px;">!</span>
+        <span style="font-family:Arial,sans-serif; font-size:14px; vertical-align:top; color:#666; font-weight:normal;">TM</span>
+      </div>
+
+      <div style="font-family:Verdana,Arial,sans-serif; font-size:13px; color:#333; margin-top:4px; letter-spacing:1px;">
+        The World&apos;s <span style="color:#cc0000;"><b>#1 ANSWER-ENGINE</b></span> on the Internet&trade;
+      </div>
+      <div style="font-family:Arial,sans-serif; font-size:10px; color:#666; margin-top:2px;">
+        <i>&laquo; Just ask a question &mdash; in plain English! &raquo;</i> &nbsp;&#10024;&nbsp; New! Now with <b>A.I.</b>&trade; powered by <b>CYBER-NEURAL-NETS</b>&trade;
+      </div>
+    </div>
+
+    <!-- ============ MAIN: 2-COL (butler + search) ============ -->
+    <div style="max-width:920px; margin:0 auto; padding:18px 14px;">
+
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="font-family:Verdana,Arial,sans-serif;">
+        <tr valign="top">
+
+          <!-- LEFT: animated butler/oracle character -->
+          <td width="200" align="center" style="padding-right:16px;">
+            <!-- Cyber-Oracle butler SVG -->
+            <svg viewBox="0 0 160 200" width="160" height="200" xmlns="http://www.w3.org/2000/svg" style="display:block; margin:0 auto; background:#fff; border:3px ridge #ffcc00;">
+              <defs>
+                <radialGradient id="ppx-bg" cx="0.5" cy="0.3" r="0.8">
+                  <stop offset="0" stop-color="#ffffe0"/>
+                  <stop offset="1" stop-color="#cce0ff"/>
+                </radialGradient>
+                <radialGradient id="ppx-bulb" cx="0.5" cy="0.4" r="0.6">
+                  <stop offset="0" stop-color="#fff"/>
+                  <stop offset="0.6" stop-color="#aaeeff"/>
+                  <stop offset="1" stop-color="#0099cc"/>
+                </radialGradient>
+                <linearGradient id="ppx-coat" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stop-color="#1a1a4a"/>
+                  <stop offset="1" stop-color="#000033"/>
+                </linearGradient>
+              </defs>
+              <rect width="160" height="200" fill="url(#ppx-bg)"/>
+              <!-- floating thought bubbles -->
+              <g opacity="0.85">
+                <circle cx="32" cy="32" r="4" fill="#fff" stroke="#999"/>
+                <circle cx="42" cy="22" r="6" fill="#fff" stroke="#999"/>
+                <circle cx="56" cy="18" r="9" fill="#fff" stroke="#999"/>
+                <text x="56" y="22" text-anchor="middle" font-family="Arial" font-size="11" font-weight="bold" fill="#0066cc">?</text>
+              </g>
+              <g opacity="0.7">
+                <circle cx="132" cy="40" r="3" fill="#fff" stroke="#999"/>
+                <circle cx="124" cy="32" r="5" fill="#fff" stroke="#999"/>
+                <circle cx="116" cy="22" r="8" fill="#fff" stroke="#999"/>
+                <text x="116" y="26" text-anchor="middle" font-family="Arial" font-size="10" font-weight="bold" fill="#cc0000">A!</text>
+              </g>
+              <!-- Body: butler coat -->
+              <path d="M 40,200 L 50,110 Q 80,90 110,110 L 120,200 Z" fill="url(#ppx-coat)" stroke="#000"/>
+              <!-- bow tie -->
+              <polygon points="70,108 80,114 90,108 90,118 80,114 70,118" fill="#cc0000" stroke="#660000"/>
+              <!-- white shirt collar -->
+              <path d="M 70,108 L 80,120 L 90,108 L 88,108 L 80,116 L 72,108 Z" fill="#fff" stroke="#999"/>
+              <!-- Head -->
+              <circle cx="80" cy="80" r="26" fill="#ffe0c4" stroke="#000"/>
+              <!-- hair (sided gray) -->
+              <path d="M 56,72 Q 60,55 80,55 Q 100,55 104,72 L 104,80 Q 100,68 90,68 L 70,68 Q 60,68 56,80 Z" fill="#888"/>
+              <!-- monocle (oracle wisdom!) -->
+              <circle cx="74" cy="80" r="6" fill="none" stroke="#000" stroke-width="1.5"/>
+              <line x1="80" y1="86" x2="84" y2="92" stroke="#000" stroke-width="0.8"/>
+              <!-- other eye -->
+              <circle cx="88" cy="80" r="1.5" fill="#000"/>
+              <!-- mustache -->
+              <path d="M 70,90 Q 80,95 90,90" stroke="#666" stroke-width="2" fill="none"/>
+              <!-- smile -->
+              <path d="M 72,96 Q 80,100 88,96" stroke="#000" stroke-width="1" fill="none"/>
+              <!-- Glowing answer-bulb in hand -->
+              <circle cx="120" cy="140" r="14" fill="url(#ppx-bulb)" stroke="#0099cc"/>
+              <text x="120" y="146" text-anchor="middle" font-family="Times" font-size="14" font-weight="bold" fill="#003366">AI</text>
+              <!-- arm to bulb -->
+              <path d="M 100,118 Q 112,128 120,140" stroke="#1a1a4a" stroke-width="5" fill="none"/>
+            </svg>
+            <div style="margin-top:6px; font-family:Verdana,Arial,sans-serif; font-size:11px; color:#333; line-height:1.3;">
+              <b style="color:#cc0000;">PERPI</b>&trade;<br>
+              <i>Your Personal<br>Cyber-Oracle</i>&trade;
+            </div>
+            <div style="margin-top:6px; font-family:Arial,sans-serif; font-size:9px; color:#666;">
+              <span class="blink" style="color:#33aa33;">&#9679;</span> ONLINE &mdash; 23,481 questions answered today!
+            </div>
+          </td>
+
+          <!-- RIGHT: big search box + sample questions -->
+          <td style="padding:0;">
+            <div style="background:#fffbe6; border:2px ridge #cc9900; padding:14px 16px;">
+              <div style="font-family:Verdana,Arial,sans-serif; font-size:14px; color:#003366; font-weight:bold; margin-bottom:4px;">
+                &#128221; Type a question and click ASK ME!
+              </div>
+              <form action="https://www.perplexity.ai/" method="get" target="_blank" style="margin:0;" onsubmit="var q=this.querySelector('input[name=q]').value; if(q && q.trim()){ this.action='https://www.perplexity.ai/search?q='+encodeURIComponent(q.trim());} return true;">
+                <input type="text" name="q" placeholder="e.g., How do I install Netscape Navigator 4?" autocomplete="off" style="width:calc(100% - 100px); max-width:480px; font-family:Arial,sans-serif; font-size:14px; padding:6px 8px; border:2px inset #999;">
+                <button type="submit" style="font-family:Arial,sans-serif; font-size:12px; font-weight:bold; padding:6px 14px; background:linear-gradient(180deg,#ffcc00,#cc8800); border:2px outset #ffcc00; color:#000; cursor:pointer; vertical-align:top;">&raquo; ASK ME!</button>
+                <div style="margin-top:6px; font-size:11px; color:#333;">
+                  <label><input type="radio" name="lang" checked> Plain English</label>
+                  <label style="margin-left:10px;"><input type="radio" name="lang"> Boolean (AND/OR/NOT)</label>
+                  <label style="margin-left:10px;"><input type="radio" name="lang"> Smart Search&trade;</label>
+                </div>
+              </form>
+
+              <!-- Sample questions -->
+              <div style="margin-top:10px; padding-top:8px; border-top:1px dashed #cc9900; font-size:11px;">
+                <b style="color:#cc0000;">&#9733; ASK PERPI:</b>
+                ${sampleQs.map(q => `<a href="https://www.perplexity.ai/search?q=${encodeURIComponent(q)}" target="_blank" style="color:#0000cc; text-decoration:underline; margin-right:8px; white-space:nowrap;">${q}</a>`).join(' &middot; ')}
+              </div>
+            </div>
+
+            <!-- live-answer ticker -->
+            <div style="margin-top:14px; background:#fff; border:1px solid #999;">
+              <div style="background:#003366; color:#fff; padding:3px 10px; font-family:Verdana,Arial,sans-serif; font-size:11px; font-weight:bold; letter-spacing:1px;">
+                &#128276; LIVE Q&amp;A FEED &mdash; questions answered in real-time by Perpi&trade;!
+              </div>
+              <div style="padding:8px 10px; font-family:'Times New Roman',serif; font-size:12px; line-height:1.5;">
+                ${askTicker.map(it => `<div style="padding:4px 0; border-bottom:1px dotted #ccc;"><b style="color:#003366;">Q:</b> <i>${it.q}</i><br><b style="color:#cc0000;">A:</b> ${it.a}</div>`).join('')}
+              </div>
+            </div>
+          </td>
+        </tr>
+      </table>
+
+      <!-- ============ 3-COL: directory / news / ramp ad ============ -->
+      <table width="100%" cellpadding="0" cellspacing="6" border="0" style="margin-top:18px;">
+        <tr valign="top">
+
+          <!-- WEB DIRECTORY -->
+          <td width="33%" style="background:#fff; border:1px solid #999; padding:0;">
+            <div style="background:#cc0000; color:#fff; padding:3px 8px; font-family:Verdana,Arial,sans-serif; font-size:11px; font-weight:bold;">&#128218; WEB DIRECTORY</div>
+            <div style="padding:8px 10px; font-family:Verdana,Arial,sans-serif; font-size:11px; line-height:1.7;">
+              <b style="color:#003366;">Arts &amp; Humanities</b><br>
+              <span style="font-size:10px; color:#666;">&middot; Literature &middot; Photography</span><br>
+              <b style="color:#003366;">Business &amp; Economy</b><br>
+              <span style="font-size:10px; color:#666;">&middot; B2B &middot; Finance &middot; <a href="${ramp('ppx-directory')}" target="_blank" style="color:#cc0000;"><b>Corporate Cards (NEW!)</b></a></span><br>
+              <b style="color:#003366;">Computers &amp; Internet</b><br>
+              <span style="font-size:10px; color:#666;">&middot; WWW &middot; Software &middot; Y2K</span><br>
+              <b style="color:#003366;">Education</b><br>
+              <span style="font-size:10px; color:#666;">&middot; K-12 &middot; College &amp; Univ.</span><br>
+              <b style="color:#003366;">Entertainment</b><br>
+              <span style="font-size:10px; color:#666;">&middot; Movies &middot; Music &middot; Humor</span><br>
+              <b style="color:#003366;">Government</b><br>
+              <b style="color:#003366;">Health</b><br>
+              <b style="color:#003366;">News &amp; Media</b><br>
+              <b style="color:#003366;">Recreation</b><br>
+              <b style="color:#003366;">Reference</b><br>
+              <b style="color:#003366;">Regional</b><br>
+              <b style="color:#003366;">Science</b><br>
+              <b style="color:#003366;">Social Science</b><br>
+              <b style="color:#003366;">Society &amp; Culture</b>
+            </div>
+          </td>
+
+          <!-- TODAY'S TOP QUESTIONS -->
+          <td width="34%" style="background:#fff; border:1px solid #999; padding:0;">
+            <div style="background:#0066cc; color:#fff; padding:3px 8px; font-family:Verdana,Arial,sans-serif; font-size:11px; font-weight:bold;">&#128293; TODAY&apos;S TOP QUESTIONS</div>
+            <div style="padding:8px 10px; font-family:'Times New Roman',serif; font-size:12px; line-height:1.6;">
+              <ol style="margin:0 0 0 18px; padding:0;">
+                <li><a href="https://www.perplexity.ai/search?q=Florida+recount+Bush+Gore" target="_blank" style="color:#0000cc;">Who really won Florida?</a> <font color="#999" size="1">(8,221 asks)</font></li>
+                <li><a href="https://www.perplexity.ai/search?q=Y2K+bug+real+impact" target="_blank" style="color:#0000cc;">Is the Y2K bug actually real?</a> <font color="#999" size="1">(6,704)</font></li>
+                <li><a href="https://www.perplexity.ai/search?q=Napster+legal+status" target="_blank" style="color:#0000cc;">Is Napster legal?</a> <font color="#999" size="1">(5,890)</font></li>
+                <li><a href="${ramp('ppx-top-q')}" target="_blank" style="color:#cc0000;"><b>How do I close my books faster?</b></a> <font color="#999" size="1">(5,212)</font></li>
+                <li><a href="https://www.perplexity.ai/search?q=AOL+Time+Warner+merger" target="_blank" style="color:#0000cc;">Will AOL/Time Warner be the biggest company ever?</a> <font color="#999" size="1">(4,128)</font></li>
+                <li><a href="https://www.perplexity.ai/search?q=DSL+vs+cable+modem" target="_blank" style="color:#0000cc;">DSL or Cable Modem?</a> <font color="#999" size="1">(3,977)</font></li>
+                <li><a href="https://www.perplexity.ai/search?q=what+is+blogging" target="_blank" style="color:#0000cc;">What is a &laquo;web-log&raquo; (blog)?</a> <font color="#999" size="1">(3,612)</font></li>
+                <li><a href="https://www.perplexity.ai/search?q=Pokemon+Gold+Silver+strategy" target="_blank" style="color:#0000cc;">Pokemon Gold strategy guide?</a> <font color="#999" size="1">(2,990)</font></li>
+              </ol>
+            </div>
+          </td>
+
+          <!-- RAMP AD: sidebar skyscraper -->
+          <td width="33%" style="vertical-align:top;">
+            <div style="background:#fffbe0; border:2px ridge #cc9900; padding:10px;">
+              <div style="font-family:Arial,sans-serif; font-size:9px; color:#999; letter-spacing:1px; text-transform:uppercase;">Sponsored Result</div>
+              <div style="font-family:'Comic Sans MS',sans-serif; font-size:16px; font-weight:bold; color:#cc0000; margin-top:4px;">Ask Perpi: &laquo;How do I stop using a shoebox for receipts?&raquo;</div>
+              <div style="font-family:Verdana,Arial,sans-serif; font-size:11px; color:#333; margin-top:6px; line-height:1.4;">
+                <b style="color:#003366;">Perpi&apos;s Answer:</b> Get <a href="${ramp('ppx-skyscraper')}" target="_blank" style="color:#cc0000; font-weight:bold;">RAMP.COM</a> &mdash; the corporate card &amp; spend-management platform that closes the books <b>8x faster</b> than spreadsheets.
+                <ul style="margin:6px 0 4px 16px; padding:0; line-height:1.6;">
+                  <li>5% CASHBACK</li>
+                  <li>$0 annual fee</li>
+                  <li>A.I.&trade;-powered receipt OCR</li>
+                  <li>Y2K-compliant</li>
+                </ul>
+              </div>
+              <a href="${ramp('ppx-skyscraper-cta')}" target="_blank" style="display:inline-block; margin-top:4px; padding:4px 12px; background:linear-gradient(180deg,#ffcc00,#cc8800); border:2px outset #ffcc00; color:#000; font-family:Arial; font-size:11px; font-weight:bold; text-decoration:none;">&raquo; APPLY ON-LINE!</a>
+              <div style="margin-top:6px; font-family:Arial,sans-serif; font-size:9px; color:#666;"><i>Perpi&trade; recommends 1 in 5 results from RAMP.COM, our trusted partner.</i></div>
+            </div>
+
+            <!-- "Did you know?" mini card -->
+            <div style="margin-top:10px; background:#fff; border:1px solid #999; padding:8px 10px; font-family:Verdana,Arial,sans-serif; font-size:11px; line-height:1.5;">
+              <b style="color:#33aa33;">&#128161; DID YOU KNOW?</b><br>
+              Perpi&trade; reads the ENTIRE World Wide Web every 24 hours and indexes <b>4.7 billion</b> web pages. That&apos;s more than ANY other Answer-Engine on the Internet!*<br>
+              <font size="1" color="#999"><i>*Source: trust us.</i></font>
+            </div>
+          </td>
+        </tr>
+      </table>
+
+      <!-- ============ HOW PERPI WORKS (ASCII pipeline) ============ -->
+      <div style="margin-top:18px; background:#fff; border:1px solid #999;">
+        <div style="background:#33aa33; color:#fff; padding:3px 10px; font-family:Verdana,Arial,sans-serif; font-size:11px; font-weight:bold;">&#128300; HOW PERPI&trade; WORKS &mdash; THE CYBER-ORACLE PIPELINE</div>
+        <div style="padding:10px 14px; font-family:Verdana,Arial,sans-serif; font-size:11px;">
+          <table width="100%" border="0" cellpadding="6" style="text-align:center;">
+            <tr>
+              <td width="20%" style="background:#eef; border:1px solid #99c;"><b style="color:#003366;">1. YOU ASK</b><br><span style="font-size:10px;">in plain English</span><br><span style="font-size:24px;">&#129300;</span></td>
+              <td width="2%" style="font-size:18px; color:#cc0000;">&raquo;</td>
+              <td width="20%" style="background:#fef; border:1px solid #c9c;"><b style="color:#660066;">2. PERPI THINKS</b><br><span style="font-size:10px;">via Neural-Net&trade;</span><br><span style="font-size:24px;">&#129504;</span></td>
+              <td width="2%" style="font-size:18px; color:#cc0000;">&raquo;</td>
+              <td width="20%" style="background:#ffe; border:1px solid #cc9;"><b style="color:#996600;">3. WEB SCAN</b><br><span style="font-size:10px;">4.7B pages</span><br><span style="font-size:24px;">&#127760;</span></td>
+              <td width="2%" style="font-size:18px; color:#cc0000;">&raquo;</td>
+              <td width="20%" style="background:#efe; border:1px solid #9c9;"><b style="color:#006600;">4. ANSWER!</b><br><span style="font-size:10px;">with sources</span><br><span style="font-size:24px;">&#128218;</span></td>
+            </tr>
+          </table>
+          <div style="margin-top:8px; font-size:10px; color:#666; text-align:center;">
+            Average response time: <b style="color:#33aa33;">2.3 seconds</b>* &nbsp;&middot;&nbsp; <i>*on a T1 connection. 28.8k modem users: please be patient.</i>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ WEB POLL + STATS ============ -->
+      <table width="100%" cellpadding="0" cellspacing="6" border="0" style="margin-top:18px;">
+        <tr valign="top">
+          <td width="50%" style="background:#fff; border:1px solid #999; padding:0;">
+            <div style="background:#cc0000; color:#fff; padding:3px 8px; font-family:Verdana,Arial,sans-serif; font-size:11px; font-weight:bold;">&#9745; WEB POLL OF THE WEEK!</div>
+            <div style="padding:10px; font-family:Verdana,Arial,sans-serif; font-size:11px;">
+              <b>Will A.I. ever be smart enough to write a complete sentence?</b><br>
+              <label><input type="radio" name="ppxpoll" checked> Yes, within 5 years</label> <font color="#33aa33"><b>62%</b></font><br>
+              <label><input type="radio" name="ppxpoll"> Yes, within 20 years</label> <font color="#33aa33"><b>25%</b></font><br>
+              <label><input type="radio" name="ppxpoll"> Never &mdash; the human brain is too complex</label> <font color="#33aa33"><b>11%</b></font><br>
+              <label><input type="radio" name="ppxpoll"> Already does (see Perpi&trade;!)</label> <font color="#33aa33"><b>2%</b></font><br>
+              <button type="button" style="margin-top:4px; padding:2px 10px; font-size:11px;">VOTE!</button>
+              <font size="1" color="#666"><i>Based on 8,402 votes since 11/06/MM</i></font>
+            </div>
+          </td>
+          <td width="50%" style="background:#000080; color:#fff; padding:10px; font-family:'Courier New',monospace; font-size:11px; line-height:1.6;">
+            <div style="color:#ffcc00; font-weight:bold; margin-bottom:6px;">// PERPI&trade; SYSTEM STATS</div>
+            INDEXED.PAGES ..... <span style="color:#0f0;">4,723,891,402</span><br>
+            QUESTIONS.TODAY ... <span style="color:#0f0;">23,481</span><br>
+            AVG.RESPONSE ...... <span style="color:#0f0;">2.3 sec</span><br>
+            NEURAL.NETS ....... <span style="color:#0f0;">12 layers, 8MB</span><br>
+            UPTIME ............ <span style="color:#0f0;">99.94%</span> (since 11/01/MM)<br>
+            VISITOR.COUNT ..... <span style="color:#0f0;">000847291</span>
+          </td>
+        </tr>
+      </table>
+
+      <!-- ============ DISCLAIMER FOOTER ============ -->
+      <div style="margin-top:18px; padding:10px 14px; background:#f5f5dc; border:1px dashed #999; font-family:'Times New Roman',serif; font-size:11px; line-height:1.5; color:#333;">
+        <b style="color:#cc0000;">&#9888; IMPORTANT DISCLAIMER:</b> Perpi&trade; is an experimental Cyber-Oracle and may occasionally generate <i>incorrect</i> or <i>hallucinated</i> answers. Always verify with a human librarian, your local newspaper, or the World Book Encyclopedia&trade;. Perpi&trade; is <b>not</b> a substitute for professional financial, medical, or legal advice. Use of Perpi&trade; constitutes acceptance of our <a href="#" style="color:#0000cc;">Terms of Service</a> and <a href="#" style="color:#0000cc;">Privacy Policy</a>. <i>Y2K-compliant since MMI.</i>
+      </div>
+
+    </div>
+
+    <!-- ============ FOOTER NAV ============ -->
+    <div style="text-align:center; padding:14px; font-family:Verdana,Arial,sans-serif; font-size:11px; color:#666; border-top:2px solid #ffcc00; margin-top:18px; background:#fff;">
+      <a href="#" style="color:#0000cc;">About Perplexity</a> &middot;
+      <a href="#" style="color:#0000cc;">Submit a Site</a> &middot;
+      <a href="#" style="color:#0000cc;">Advertising</a> &middot;
+      <a href="#" style="color:#0000cc;">Press</a> &middot;
+      <a href="#" style="color:#0000cc;">Jobs</a> &middot;
+      <a href="${ramp('ppx-footer')}" target="_blank" style="color:#cc0000;"><b>Sponsored by Ramp.com</b></a>
+      <br>
+      <font size="1">&copy; MMI Perplexity Networks, Inc. &nbsp;&middot;&nbsp; Best viewed in Netscape Navigator 4.0 or M.S. Internet Explorer 5.0 at 800&times;600 &nbsp;&middot;&nbsp; Patents Pending.</font>
+      <div style="margin-top:10px;">
+        <button data-restart style="background:#ececec; border:1px solid #999; padding:4px 14px; font-family:Verdana; font-size:11px; cursor:pointer;">[Y2K-ify another site]</button>
+      </div>
+    </div>
+
   </div>`;
 }

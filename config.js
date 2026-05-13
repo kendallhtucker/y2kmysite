@@ -11,8 +11,8 @@
     PROXY_URL: '',
 
     // How long to wait for the AI proxy before falling back to regex render.
-    // 12s gives gpt-4o-mini a cold-start budget; cached hits return in <200ms.
-    PROXY_TIMEOUT_MS: 12000,
+    // 25s budget: fresh gpt-4o-mini takes 14-18s, cached hits return <200ms.
+    PROXY_TIMEOUT_MS: 25000,
 
     // When true, AI generation is used for any non-curated domain (when
     // PROXY_URL is set). When false, even uncurated domains use the

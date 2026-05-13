@@ -22,8 +22,18 @@
 //   KV_REST_API_TOKEN      (auto from @vercel/kv add-on)
 //   ALLOWED_ORIGIN         (optional, defaults to https://kendallhtucker.github.io)
 
-import { kv } from '@vercel/kv';
 import crypto from 'node:crypto';
+
+// Load Vercel KV at runtime; fall back to a no-op stub when the SDK isn't
+// installed (local dev) or when KV env vars aren't set. The handler already
+// swallows KV errors, so the worst case is just no shared caching.
+let kv = { async get() { return null; }, async set() { return null; } };
+try {
+  if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
+    const mod = await import('@vercel/kv');
+    if (mod && mod.kv) kv = mod.kv;
+  }
+} catch (_) { /* SDK not installed locally — keep stub */ }
 
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || 'https://kendallhtucker.github.io';
 const MODEL = 'gpt-4o-mini';
